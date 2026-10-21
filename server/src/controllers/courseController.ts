@@ -3,6 +3,9 @@ import { z } from "zod";
 import mongoose from "mongoose";
 import type { AuthenticatedRequest } from "../middleware/authenticate";
 import { Course } from "../models/Course";
+import { User } from "../models/User";
+import { CourseEnrollment } from "../models/CourseEnrollment";
+import { XpEvent } from "../models/XpEvent";
 
 const lessonSchema = z.object({
   title: z.string().trim().min(2).max(160),
@@ -70,9 +73,9 @@ export async function listPublishedStudentCourses(request: AuthenticatedRequest,
       .populate("teacherId", "name")
       .sort({ createdAt: -1 })
       .lean(),
-    (await import("../models/CourseEnrollment")).CourseEnrollment.find({ studentId: request.userId }).lean(),
+    CourseEnrollment.find({ studentId: request.userId }).lean(),
   ]);
-  const progressByCourse = new Map(enrollments.map((item) => [String(item.courseId), item.completedLessonIds]));
+  const progressByCourse = new Map(enrollments.map((item) => [String(item.courseId), { completedLessonIds: item.completedLessonIds, completedAt: item.completedAt }]));
   response.json({ data: { courses, progress: Object.fromEntries(progressByCourse) } });
 }
 
@@ -92,8 +95,6 @@ export async function completeStudentLesson(request: AuthenticatedRequest, respo
     response.status(404).json({ message: "Lesson not found in this course." });
     return;
   }
-  const { CourseEnrollment } = await import("../models/CourseEnrollment");
-  const { User } = await import("../models/User");
   const existing = await CourseEnrollment.findOne({ studentId: request.userId, courseId });
   const alreadyCompleted = Boolean(existing?.completedLessonIds.includes(lessonId));
   const enrollment = await CourseEnrollment.findOneAndUpdate(
@@ -109,6 +110,10 @@ export async function completeStudentLesson(request: AuthenticatedRequest, respo
   }
   const xpEarned = alreadyCompleted ? 0 : 10;
   const user = xpEarned > 0 ? await User.findByIdAndUpdate(request.userId, { $inc: { totalXp: xpEarned } }, { new: true }).select("totalXp") : await User.findById(request.userId).select("totalXp");
+  if (xpEarned > 0) {
+    const lesson = course.modules.flatMap((module) => module.lessons).find((item) => String(item._id) === lessonId);
+    await XpEvent.create({ userId: request.userId, source: "course-lesson", sourceId: courseId + ":" + lessonId, label: lesson?.title ?? "Course lesson", xpEarned, earnedOn: new Date().toISOString().slice(0, 10) });
+  }
   response.json({
     message: alreadyCompleted ? "This lesson was already completed." : "Lesson completed! You earned " + xpEarned + " XP.",
     data: { completedLessonIds: enrollment.completedLessonIds, completedLessons: enrollment.completedLessonIds.length, totalLessons: lessonCount, courseCompleted: Boolean(enrollment.completedAt), xpEarned, totalXp: user?.totalXp ?? 0 },
@@ -121,7 +126,6 @@ export async function getTeacherCourseProgress(request: AuthenticatedRequest, re
     .select("title status modules")
     .lean();
   const courseIds = courses.map((course) => course._id);
-  const { CourseEnrollment } = await import("../models/CourseEnrollment");
   const enrollments = await CourseEnrollment.find({ courseId: { $in: courseIds } })
     .populate("studentId", "name email level")
     .populate("courseId", "title modules status")
@@ -161,4 +165,17 @@ export async function getTeacherCourseProgress(request: AuthenticatedRequest, re
       rows,
     },
   });
+}
+
+
+export async function getStudentXpHistory(request: AuthenticatedRequest, response: Response): Promise<void> {
+  const events = await XpEvent.find({ userId: request.userId }).sort({ createdAt: -1 }).limit(100).lean();
+  const now = new Date();
+  const weekly = Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(now);
+    date.setDate(now.getDate() - (6 - index));
+    const key = date.toISOString().slice(0, 10);
+    return { date: key, day: date.toLocaleDateString("en", { weekday: "short", timeZone: "UTC" }), xp: events.filter((event) => event.earnedOn === key).reduce((sum, event) => sum + event.xpEarned, 0) };
+  });
+  response.json({ data: { events, weekly, totalXp: (await User.findById(request.userId).select("totalXp"))?.totalXp ?? 0 } });
 }
