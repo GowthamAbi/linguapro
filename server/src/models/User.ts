@@ -8,7 +8,7 @@ export interface UserFields {
   targetLanguage: string;
   level: string;
   plan: string;
-  role: "student" | "teacher";
+  role?: "student" | "teacher";
   totalXp: number;
   currentStreak: number;
   lastActiveDate: string;
