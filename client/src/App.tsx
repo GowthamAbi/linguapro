@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import type { FormEvent, ReactNode } from "react";
 import type { LearningLevel, LearningPhrase, LearningTask, Page, UserProfile } from "./types";
+import TeacherCourseBuilder from "./components/TeacherCourseBuilder";
 
 const phrases: LearningPhrase[] = [
   { phrase: "Could you please help me?", meaning: "Ask someone for help politely.", example: "Could you please help me with this report?" },
@@ -438,6 +439,7 @@ function App() {
           {page === ("teacher" as Page) && isTeacher && <>
             <PageTitle eyebrow="TEACHER WORKSPACE" title={"Welcome, " + profile.name} subtitle="Create assignments and review student submissions." />
             <div className="stats-grid"><StatCard icon={<Users />} label="Your students" value={String(teacherStudents.length)} detail="Students assigned work" /><StatCard icon={<ClipboardList />} label="Assignments" value={String(teacherAssignments.length)} detail="Created by you" /><StatCard icon={<Check />} label="Submissions" value={String(teacherAssignments.reduce((sum, item) => sum + item.submissions.length, 0))} detail="Student responses" /></div>
+            <TeacherCourseBuilder apiBase={apiBase} />
             <section className="surface-card settings-card"><h3>Create assignment</h3><p>Assign work to existing student accounts using their email addresses.</p>
               <form className="form-grid" onSubmit={async (event) => { event.preventDefault(); setAssignmentBusy(true); setAssignmentMessage(""); try { const emails = assignmentStudentEmails.split(/[\s,;]+/).map((email) => email.trim()).filter(Boolean); const response = await fetch(apiBase + "/assignments/teacher/assignments", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: assignmentTitle, description: assignmentDescription, studentEmails: emails }) }); const payload = await response.json() as { message?: string }; if (!response.ok) throw new Error(payload.message ?? "Could not create assignment."); setAssignmentMessage(payload.message ?? "Assignment created."); setAssignmentTitle(""); setAssignmentDescription(""); setAssignmentStudentEmails(""); await loadTeacherWorkspace(); } catch (error) { setAssignmentMessage(error instanceof Error ? error.message : "Could not create assignment."); } finally { setAssignmentBusy(false); } }}>
                 <label>Assignment title<input required minLength={3} maxLength={120} value={assignmentTitle} onChange={(event) => setAssignmentTitle(event.target.value)} placeholder="e.g. Introduce yourself in English" /></label>
