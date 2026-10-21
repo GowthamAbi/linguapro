@@ -1,4 +1,4 @@
-export type Page = "dashboard" | "courses" | "speaking" | "vocabulary" | "progress" | "profile" | "plans" | "owner";
+export type Page = "dashboard" | "courses" | "speaking" | "vocabulary" | "progress" | "profile" | "plans" | "owner" | "teacher";
 export type LearningLevel = "Basic" | "Intermediate" | "Advanced";
 
 export interface UserProfile {
@@ -8,6 +8,7 @@ export interface UserProfile {
   targetLanguage: string;
   level: LearningLevel;
   plan: "Free" | "Premium";
+  role: "student" | "teacher";
 }
 
 export interface LearningTask {
