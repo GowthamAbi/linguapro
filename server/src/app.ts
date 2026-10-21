@@ -4,6 +4,7 @@ import express, { type ErrorRequestHandler } from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
 import authRoutes from "./routes/authRoutes";
+import adminRoutes from "./routes/adminRoutes";
 import profileRoutes from "./routes/profileRoutes";
 import progressRoutes from "./routes/progressRoutes";
 
@@ -40,6 +41,7 @@ app.get("/api/health", (_request, response) => {
   response.json({ status: "ok", service: "LinguaPro API" });
 });
 app.use("/api/auth", authLimiter, authRoutes);
+app.use("/api/admin", adminRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/progress", progressRoutes);
 app.use((_request, response) => response.status(404).json({ message: "API route not found." }));
