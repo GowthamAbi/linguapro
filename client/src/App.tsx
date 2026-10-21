@@ -133,7 +133,7 @@ function App() {
         setMessage("The login UI is ready. Set VITE_API_URL after deploying the Node.js API to enable account access.");
         return;
       }
-      const path = authMode === "register" ? "/api/auth/register" : "/api/auth/login";
+      const path = authMode === "register" ? "/auth/register" : "/auth/login";
       const response = await fetch(base + path, {
         method: "POST",
         credentials: "include",
