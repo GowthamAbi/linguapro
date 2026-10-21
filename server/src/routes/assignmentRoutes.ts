@@ -6,10 +6,10 @@ import { createAssignment, gradeSubmission, listStudentAssignments, listTeacherA
 
 const router = Router();
 router.use(authenticate);
-router.get("/teacher/students", requireTeacher, asyncHandler(teacherStudents));
-router.get("/teacher/assignments", requireTeacher, asyncHandler(listTeacherAssignments));
-router.post("/teacher/assignments", requireTeacher, asyncHandler(createAssignment));
-router.post("/teacher/assignments/:assignmentId/grade", requireTeacher, asyncHandler(gradeSubmission));
-router.get("/student/assignments", requireStudent, asyncHandler(listStudentAssignments));
-router.post("/student/assignments/:assignmentId/submit", requireStudent, asyncHandler(submitAssignment));
+router.get("/teacher/students", asyncHandler(requireTeacher), asyncHandler(teacherStudents));
+router.get("/teacher/assignments", asyncHandler(requireTeacher), asyncHandler(listTeacherAssignments));
+router.post("/teacher/assignments", asyncHandler(requireTeacher), asyncHandler(createAssignment));
+router.post("/teacher/assignments/:assignmentId/grade", asyncHandler(requireTeacher), asyncHandler(gradeSubmission));
+router.get("/student/assignments", asyncHandler(requireStudent), asyncHandler(listStudentAssignments));
+router.post("/student/assignments/:assignmentId/submit", asyncHandler(requireStudent), asyncHandler(submitAssignment));
 export default router;
