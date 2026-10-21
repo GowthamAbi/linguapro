@@ -30,7 +30,7 @@ function setSessionCookie(response: Response, token: string): void {
   response.cookie("linguapro_token", token, {
     httpOnly: true,
     secure: process.env.COOKIE_SECURE === "true",
-    sameSite: "lax",
+    sameSite: "none",
     maxAge: 7 * 24 * 60 * 60 * 1000,
     path: "/",
   });
