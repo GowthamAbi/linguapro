@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   AudioLines, BookOpen, Check, ChevronRight, CircleUserRound, Crown,
   Flame, GraduationCap, Languages, LayoutDashboard, LockKeyhole, LogIn,
-  Menu, Mic, Settings, Sparkles, Star, Target, TrendingUp, Volume2, X, Users, ShieldCheck, UserRound,
+  Menu, Mic, Settings, Sparkles, Star, Target, TrendingUp, Volume2, X, Users, ShieldCheck, UserRound, ClipboardList, Send,
 } from "lucide-react";
 import type { FormEvent, ReactNode } from "react";
 import type { LearningLevel, LearningPhrase, LearningTask, Page, UserProfile } from "./types";
@@ -33,6 +33,7 @@ const navItems: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "speaking", label: "Speaking", icon: AudioLines },
   { id: "vocabulary", label: "Vocabulary", icon: BookOpen },
   { id: "progress", label: "My progress", icon: TrendingUp },
+  { id: "assignments", label: "Assignments", icon: ClipboardList },
   { id: "profile", label: "Profile & settings", icon: Settings },
 ];
 
@@ -83,6 +84,15 @@ function App() {
   const [teacherCreated, setTeacherCreated] = useState("");
   const [teacherList, setTeacherList] = useState<Array<{ _id: string; name: string; email: string; plan: string; createdAt: string }>>([]);
   const [ownerError, setOwnerError] = useState("");
+  const [assignmentTitle, setAssignmentTitle] = useState("");
+  const [assignmentDescription, setAssignmentDescription] = useState("");
+  const [assignmentStudentEmails, setAssignmentStudentEmails] = useState("");
+  const [assignmentMessage, setAssignmentMessage] = useState("");
+  const [assignmentBusy, setAssignmentBusy] = useState(false);
+  const [teacherStudents, setTeacherStudents] = useState<Array<{ _id: string; name: string; email: string; targetLanguage: string; level: string; totalXp: number }>>([]);
+  const [teacherAssignments, setTeacherAssignments] = useState<Array<{ _id: string; title: string; description: string; studentIds: Array<{ _id: string; name: string; email: string }>; dueDate?: string; submissions: Array<{ studentId: string; answer: string; submittedAt: string; feedback: string; score?: number }> }>>([]);
+  const [studentAssignments, setStudentAssignments] = useState<Array<{ _id: string; title: string; description: string; teacherId?: { name: string; email: string }; dueDate?: string; mySubmission: { answer: string; submittedAt: string; feedback: string; score?: number } | null }>>([]);
+  const [assignmentAnswers, setAssignmentAnswers] = useState<Record<string, string>>({});
 
   async function loadOwnerData(section: "overview" | "users" | "students" | "teachers" = ownerSection) {
     if (!apiBase || !isOwner) return;
@@ -110,6 +120,37 @@ function App() {
   }
 
   useEffect(() => { if (isOwner) void loadOwnerData("overview"); }, [isOwner, apiBase]);
+  async function loadTeacherWorkspace() {
+    if (!apiBase || !isTeacher) return;
+    try {
+      const [sr, ar] = await Promise.all([
+        fetch(apiBase + "/assignments/teacher/students", { credentials: "include" }),
+        fetch(apiBase + "/assignments/teacher/assignments", { credentials: "include" }),
+      ]);
+      const sp = await sr.json() as { message?: string; data?: { students: typeof teacherStudents } };
+      const ap = await ar.json() as { message?: string; data?: { assignments: typeof teacherAssignments } };
+      if (!sr.ok) throw new Error(sp.message ?? "Could not load students.");
+      if (!ar.ok) throw new Error(ap.message ?? "Could not load assignments.");
+      setTeacherStudents(sp.data?.students ?? []);
+      setTeacherAssignments(ap.data?.assignments ?? []);
+    } catch (error) { setAssignmentMessage(error instanceof Error ? error.message : "Teacher workspace could not load."); }
+  }
+
+  async function loadStudentAssignments() {
+    if (!apiBase || !authenticated || isTeacher || isOwner) return;
+    try {
+      const response = await fetch(apiBase + "/assignments/student/assignments", { credentials: "include" });
+      const payload = await response.json() as { message?: string; data?: { assignments: typeof studentAssignments } };
+      if (!response.ok) throw new Error(payload.message ?? "Could not load assignments.");
+      setStudentAssignments(payload.data?.assignments ?? []);
+    } catch (error) { setAssignmentMessage(error instanceof Error ? error.message : "Assignments could not load."); }
+  }
+
+  useEffect(() => {
+    if (page === "teacher" && isTeacher) void loadTeacherWorkspace();
+    if (page === "assignments" && authenticated && !isTeacher && !isOwner) void loadStudentAssignments();
+  }, [page, isTeacher, isOwner, authenticated, apiBase]);
+
 
   async function loadServerProgress() {
     if (!apiBase) return;
