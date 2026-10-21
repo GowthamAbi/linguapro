@@ -276,3 +276,36 @@ input, select { width: 100%; min-height: 42px; padding: 10px 11px; border: 1px s
   .course-module-editor, .course-lesson-editor { padding: 12px; }
   .course-builder-workspace .section-heading { align-items: flex-start; }
 }
+
+
+/* Published courses for student accounts */
+.student-course-library { display: grid; gap: 15px; margin-top: 30px; }
+.course-library-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; max-width: 620px; margin-bottom: 2px; }
+.student-course-list { display: grid; gap: 13px; }
+.student-course-item { padding: 18px; }
+.student-course-summary { display: flex; align-items: center; gap: 16px; }
+.student-course-summary .course-art { flex: 0 0 74px; width: 74px; height: 74px; margin: 0; color: var(--purple); }
+.student-course-copy { flex: 1; min-width: 0; }
+.student-course-copy h3 { margin: 7px 0; font: 800 17px Manrope, sans-serif; }
+.student-course-copy > p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.65; }
+.student-course-copy .course-meta { justify-content: flex-start; flex-wrap: wrap; margin: 10px 0 4px; }
+.student-course-summary > .button { flex-shrink: 0; }
+.student-course-lessons { display: grid; gap: 14px; margin-top: 18px; padding-top: 17px; border-top: 1px solid #f0edf6; }
+.student-module { display: grid; gap: 10px; }
+.student-module h4 { display: flex; align-items: center; gap: 9px; margin: 0; font-size: 14px; }
+.student-module h4 span { display: grid; place-items: center; width: 27px; height: 27px; border-radius: 8px; color: var(--purple); background: var(--lavender); font-size: 11px; }
+.student-lesson { padding: 13px; border: 1px solid #eee8f8; border-radius: 11px; background: #fdfcff; }
+.student-lesson-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.student-lesson-heading strong { font-size: 12px; }
+.student-lesson > p { margin: 9px 0 0; color: #5e586e; font-size: 12px; line-height: 1.7; white-space: pre-wrap; }
+.student-tamil-meaning { display: flex; align-items: flex-start; gap: 9px; margin-top: 11px; padding: 11px; border-radius: 9px; color: #5638b5; background: #f3efff; }
+.student-tamil-meaning > svg { flex-shrink: 0; margin-top: 2px; }
+.student-tamil-meaning strong { font-size: 11px; }
+.student-tamil-meaning p { margin: 4px 0 0; color: #51466d; font-size: 12px; line-height: 1.7; white-space: pre-wrap; }
+@media (max-width: 650px) {
+  .student-course-summary { align-items: flex-start; flex-wrap: wrap; }
+  .student-course-summary .course-art { flex-basis: 55px; width: 55px; height: 55px; font-size: 26px; }
+  .student-course-copy { flex-basis: calc(100% - 75px); }
+  .student-course-summary > .button { margin-left: 70px; }
+}
+@media (max-width: 520px) { .course-library-filters { grid-template-columns: 1fr; } }
