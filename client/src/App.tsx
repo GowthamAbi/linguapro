@@ -68,6 +68,13 @@ function App() {
   const [vocabCompleted, setVocabCompleted] = useState<string[]>(() => {
     try { return JSON.parse(localStorage.getItem("linguapro-vocab-completed") || "[]") as string[]; } catch { return []; }
   });
+  const [vocabSpoken, setVocabSpoken] = useState<Record<string, boolean>>(() => {
+    try { return JSON.parse(localStorage.getItem("linguapro-vocab-spoken") || "{}") as Record<string, boolean>; } catch { return {}; }
+  });
+  const [vocabCurrentIndex, setVocabCurrentIndex] = useState(0);
+  const [vocabSpeechMessage, setVocabSpeechMessage] = useState<Record<string, string>>({});
+  const [vocabListening, setVocabListening] = useState("");
+  useEffect(() => { localStorage.setItem("linguapro-vocab-spoken", JSON.stringify(vocabSpoken)); }, [vocabSpoken]);
   useEffect(() => { localStorage.setItem("linguapro-vocab-answers", JSON.stringify(vocabAnswers)); }, [vocabAnswers]);
   useEffect(() => { localStorage.setItem("linguapro-vocab-checked", JSON.stringify(vocabChecked)); }, [vocabChecked]);
   useEffect(() => { localStorage.setItem("linguapro-vocab-completed", JSON.stringify(vocabCompleted)); }, [vocabCompleted]);
@@ -550,12 +557,12 @@ function App() {
           </>}
 
           {page === "vocabulary" && <>
-            <PageTitle eyebrow="WORD BY WORD" title="Vocabulary builder" subtitle="Listen, understand, speak, and check what you learned." />
+            <PageTitle eyebrow="WORD BY WORD" title="Vocabulary builder" subtitle="Listen, repeat aloud, and answer correctly to unlock the next word." />
             <section className="vocab-learning-intro surface-card">
-              <div><span className="tag">DAILY PRACTICE</span><h3>Learn one word at a time</h3><p>1. Listen to the word. 2. Read the Tamil meaning. 3. Say the example aloud. 4. Answer the quick question.</p></div>
+              <div><span className="tag">DAILY PRACTICE</span><h3>Learn one word at a time</h3><p>1. Listen to the example. 2. Press Repeat and speak the full sentence. 3. Select the correct answer. Both steps are required to continue.</p></div>
               <div className="vocab-score"><strong>{vocabCompleted.length}/6</strong><span>words practised</span></div>
             </section>
-            {vocabCompleted.length === 6 && <section className="vocab-finish surface-card"><Check size={28} /><div><h3>Great work! எல்லா வார்த்தைகளையும் முடித்துவிட்டீர்கள்.</h3><p>நீங்கள் 6 வார்த்தைகளையும் பயிற்சி செய்துவிட்டீர்கள். உங்கள் முன்னேற்றம் சேமிக்கப்பட்டுள்ளது.</p></div><button className="button button-outline" onClick={() => { setVocabAnswers({}); setVocabChecked({}); setVocabCompleted([]); }}>Practise again</button></section>}
+            {vocabCompleted.length === 6 && <section className="vocab-finish surface-card"><Check size={28} /><div><h3>Great work! எல்லா வார்த்தைகளையும் முடித்துவிட்டீர்கள்.</h3><p>நீங்கள் 6 வார்த்தைகளையும் பயிற்சி செய்துவிட்டீர்கள். உங்கள் முன்னேற்றம் சேமிக்கப்பட்டுள்ளது.</p></div><button className="button button-outline" onClick={() => { setVocabAnswers({}); setVocabChecked({}); setVocabCompleted([]); setVocabSpoken({}); setVocabCurrentIndex(0); setVocabSpeechMessage({}); localStorage.removeItem("linguapro-vocab-answers"); localStorage.removeItem("linguapro-vocab-checked"); localStorage.removeItem("linguapro-vocab-completed"); localStorage.removeItem("linguapro-vocab-spoken"); }}>Practise again</button></section>}
             <div className="vocabulary-grid">{[
               { word: "Improve", meaning: "To make something better.", tamil: "மேம்படுத்துதல் / இன்னும் சிறப்பாகச் செய்தல்", example: "I want to improve my English.", question: "What does Improve mean?", options: ["To make better", "To stop working", "To arrive late"], answer: "To make better" },
               { word: "Schedule", meaning: "A plan that lists when things happen.", tamil: "வேலைகள் எப்போது நடக்க வேண்டும் என்பதைக் காட்டும் அட்டவணை", example: "I will check the production schedule.", question: "What will you check?", options: ["The production schedule", "The lunch menu", "The bus ticket"], answer: "The production schedule" },
@@ -563,7 +570,7 @@ function App() {
               { word: "Reliable", meaning: "Able to be trusted or depended on.", tamil: "நம்பகமான / நம்பி ஒப்படைக்கக்கூடிய", example: "We need a reliable machine.", question: "What kind of machine do we need?", options: ["A reliable machine", "A broken machine", "A new schedule"], answer: "A reliable machine" },
               { word: "Available", meaning: "Free or ready to be used.", tamil: "கிடைக்கக்கூடிய / பயன்படுத்தத் தயாராக இருக்கும்", example: "The mechanic is available now.", question: "Who is ready now?", options: ["The manager", "The mechanic", "The customer"], answer: "The mechanic" },
               { word: "Complete", meaning: "To finish doing something.", tamil: "ஒரு வேலையை முடித்தல்", example: "I will complete the task today.", question: "When will I finish the task?", options: ["Yesterday", "Next month", "Today"], answer: "Today" },
-            ].map((item) => {
+            ].filter((_, itemIndex) => itemIndex === vocabCurrentIndex).map((item) => {
               const checked = !!vocabChecked[item.word];
               const correct = vocabAnswers[item.word] === item.answer;
               const done = vocabCompleted.includes(item.word);
@@ -573,9 +580,35 @@ function App() {
                   <div className="vocab-word-heading"><div><h3>{item.word}</h3><p>{item.meaning}</p></div><button className="icon-button" aria-label={"Listen to " + item.word} onClick={() => { if ("speechSynthesis" in window) { window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance(item.word)); } }}><Volume2 size={17} /></button></div>
                   <div className="vocab-tamil"><strong>தமிழ் அர்த்தம்:</strong> {item.tamil}</div>
                   <div className="word-example"><strong>Example:</strong> {item.example}</div>
-                  <div className="vocab-actions"><button className="button button-outline" onClick={() => { if ("speechSynthesis" in window) { window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance(item.example)); } }}><Volume2 size={15} /> Listen to sentence</button><button className="button button-primary" onClick={() => { if ("speechSynthesis" in window) { window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance(item.example)); } }}>Listen & repeat</button></div>
+                  <div className="vocab-actions"><button className="button button-outline" onClick={() => { if ("speechSynthesis" in window) { window.speechSynthesis.cancel(); const utterance = new SpeechSynthesisUtterance(item.example); utterance.lang = "en-US"; window.speechSynthesis.speak(utterance); } }}><Volume2 size={15} /> Listen to sentence</button><button className="button button-primary" disabled={vocabListening === item.word} onClick={() => {
+                    const speechWindow = window as Window & { SpeechRecognition?: new () => any; webkitSpeechRecognition?: new () => any };
+                    const Recognition = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
+                    if (!Recognition) { setVocabSpeechMessage(prev => ({ ...prev, [item.word]: "இந்த browser-ல் voice recognition கிடைக்கவில்லை. Chrome-ல் திறந்து microphone permission கொடுத்து முயற்சிக்கவும்." })); return; }
+                    const recognition = new Recognition(); recognition.lang = "en-US"; recognition.interimResults = false; recognition.maxAlternatives = 3;
+                    setVocabListening(item.word); setVocabSpeechMessage(prev => ({ ...prev, [item.word]: "கேட்கிறேன்… முழு sentence-ஐ ஆங்கிலத்தில் சொல்லுங்கள்." }));
+                    recognition.onresult = (event: any) => {
+                      const transcript = String(event.results?.[0]?.[0]?.transcript || "");
+                      const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9']/g, " ").replace(/\\s+/g, " ").trim();
+                      const said = normalize(transcript); const expected = normalize(item.example);
+                      const words = expected.split(" ").filter(Boolean); const matched = words.filter(word => said.includes(word)).length;
+                      const pass = said === expected || (words.length >= 5 && matched / words.length >= 0.8);
+                      setVocabSpeechMessage(prev => ({ ...prev, [item.word]: pass ? "Great! உங்கள் sentence சரியாக உள்ளது. / " + transcript : "நீங்கள் சொன்னது: “" + transcript + "”. இன்னொரு முறை முழு sentence-ஐ முயற்சிக்கவும்." }));
+                      if (pass) {
+                        setVocabSpoken(prev => ({ ...prev, [item.word]: true }));
+                        if (vocabChecked[item.word] && vocabAnswers[item.word] === item.answer) {
+                          setVocabCompleted(prev => prev.includes(item.word) ? prev : [...prev, item.word]);
+                          setTimeout(() => setVocabCurrentIndex(index => Math.min(index + 1, 5)), 900);
+                        }
+                      }
+                    };
+                    recognition.onerror = (event: any) => setVocabSpeechMessage(prev => ({ ...prev, [item.word]: event.error === "not-allowed" ? "Microphone permission கொடுக்கவும்." : "Voice கேட்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்." }));
+                    recognition.onend = () => setVocabListening("");
+                    try { recognition.start(); } catch { setVocabListening(""); setVocabSpeechMessage(prev => ({ ...prev, [item.word]: "மீண்டும் Repeat அழுத்தி முயற்சிக்கவும்." })); }
+                  }}>{vocabListening === item.word ? "Listening…" : "Repeat"}</button></div>
+                  {vocabSpeechMessage[item.word] && <p className={"vocab-speech-feedback " + (vocabSpoken[item.word] ? "feedback-correct" : "")}>{vocabSpeechMessage[item.word]}</p>}
+                  <p className="vocab-step-status">Sentence: {vocabSpoken[item.word] ? "✓ completed" : "Not completed"} · Answer: {vocabChecked[item.word] && vocabAnswers[item.word] === item.answer ? "✓ correct" : "Not completed"}</p>
                   <div className="vocab-quiz"><strong>{item.question}</strong><div className="vocab-options">{item.options.map(option => <label className={"vocab-option " + (checked && option === item.answer ? "is-correct" : "") + (checked && vocabAnswers[item.word] === option && option !== item.answer ? " is-wrong" : "")} key={option}><input type="radio" name={"vocab-" + item.word} value={option} checked={vocabAnswers[item.word] === option} onChange={() => { setVocabAnswers(prev => ({ ...prev, [item.word]: option })); setVocabChecked(prev => ({ ...prev, [item.word]: false })); }} />{option}</label>)}</div>
-                    {!checked ? <button className="button button-outline" disabled={!vocabAnswers[item.word]} onClick={() => { const isCorrect = vocabAnswers[item.word] === item.answer; setVocabChecked(prev => ({ ...prev, [item.word]: true })); if (isCorrect && !done) setVocabCompleted(prev => prev.includes(item.word) ? prev : [...prev, item.word]); }}>Check answer</button> : <div className={"vocab-feedback " + (correct ? "feedback-correct" : "feedback-wrong")}>{correct ? "Correct! நல்ல பதில்." : "Not quite. சரியான பதில்: " + item.answer}{!correct && <button className="inline-link" onClick={() => { setVocabAnswers(prev => ({ ...prev, [item.word]: item.answer })); setVocabChecked(prev => ({ ...prev, [item.word]: true })); if (!done) setVocabCompleted(prev => prev.includes(item.word) ? prev : [...prev, item.word]); }}>Show correct answer</button>}</div>}
+                    {!checked ? <button className="button button-outline" disabled={!vocabAnswers[item.word]} onClick={() => { const isCorrect = vocabAnswers[item.word] === item.answer; setVocabChecked(prev => ({ ...prev, [item.word]: true })); if (isCorrect && vocabSpoken[item.word]) { setVocabCompleted(prev => prev.includes(item.word) ? prev : [...prev, item.word]); setTimeout(() => setVocabCurrentIndex(index => Math.min(index + 1, 5)), 900); } }}>Check answer</button> : <div className={"vocab-feedback " + (correct ? "feedback-correct" : "feedback-wrong")}>{correct ? "Correct! நல்ல பதில்." : "Not quite. சரியான பதில்: " + item.answer}{!correct && <button className="inline-link" onClick={() => { setVocabAnswers(prev => ({ ...prev, [item.word]: item.answer })); setVocabChecked(prev => ({ ...prev, [item.word]: true })); if (vocabSpoken[item.word]) { setVocabCompleted(prev => prev.includes(item.word) ? prev : [...prev, item.word]); setTimeout(() => setVocabCurrentIndex(index => Math.min(index + 1, 5)), 900); } }}>Show correct answer</button>}</div>}
                   </div>
                 </div>
                 {done && <span className="vocab-done" title="Practised"><Check size={16} /></span>}
