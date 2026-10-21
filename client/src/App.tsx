@@ -201,9 +201,11 @@ function App() {
       const spokenWords = normalize(spoken).split(" ").filter(Boolean);
       const missingWords = expectedWords.filter((word) => !spokenWords.includes(word));
       const extraWords = spokenWords.filter((word) => !expectedWords.includes(word));
-      const matches = spokenWords.filter((word) => expectedWords.includes(word)).length;
+      const matches = expectedWords.filter((word) => spokenWords.includes(word)).length;
       const accuracy = expectedWords.length ? matches / expectedWords.length : 0;
-      const correct = accuracy >= 0.75 && spokenWords.length >= Math.max(2, Math.ceil(expectedWords.length * 0.65));
+      // Accept the target sentence when all its words are present, even if the learner adds words.
+      // This handles natural extensions such as "and support" after the expected phrase.
+      const correct = accuracy >= 0.8 && missingWords.length <= Math.max(1, Math.floor(expectedWords.length * 0.2)) && spokenWords.length >= Math.max(2, Math.ceil(expectedWords.length * 0.65));
       const moveNext = () => {
         if (phraseIndex < phrases.length - 1) {
           setPhraseIndex((current) => Math.min(current + 1, phrases.length - 1));
