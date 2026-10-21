@@ -39,7 +39,7 @@ Health check: `GET http://localhost:4000/api/health`
 - `GET /api/profile` — read profile
 - `PATCH /api/profile` — update profile preferences
 - `GET /api/progress` — read progress and history
-- `POST /api/progress/complete` — complete a daily task
+- `POST /api/progress/complete` — complete a daily task\n- `GET /api/admin/overview` — owner-only account and learning summary\n- `GET /api/admin/users` — owner-only list of all registered accounts\n- `GET /api/admin/users?type=students` — owner-only list of accounts with recorded learning XP\n- `GET /api/admin/activity` — owner-only recent learning activity\n\nFor owner access, set `OWNER_EMAIL` on Render to the owner account email. Set `VITE_OWNER_EMAIL` in Netlify to the same email so the owner navigation is displayed. The API independently checks `OWNER_EMAIL`; the frontend variable is not a security control.
 
 Passwords are hashed with bcrypt. JWT sessions use an HTTP-only cookie. Keep `.env` out of Git.
 
