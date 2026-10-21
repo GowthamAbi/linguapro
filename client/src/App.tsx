@@ -238,9 +238,13 @@ function App() {
       const extraWords = spokenWords.filter((word) => !expectedWords.includes(word));
       const matches = expectedWords.filter((word) => spokenWords.includes(word)).length;
       const accuracy = expectedWords.length ? matches / expectedWords.length : 0;
-      // Accept the target sentence when all its words are present, even if the learner adds words.
-      // This handles natural extensions such as "and support" after the expected phrase.
-      const correct = accuracy >= 0.8 && missingWords.length <= Math.max(1, Math.floor(expectedWords.length * 0.2)) && spokenWords.length >= Math.max(2, Math.ceil(expectedWords.length * 0.65));
+      const localCorrect = accuracy >= 0.8 && missingWords.length <= Math.max(1, Math.floor(expectedWords.length * 0.2)) && spokenWords.length >= Math.max(2, Math.ceil(expectedWords.length * 0.65));
+      const localFeedback = localCorrect
+        ? "Good work! I heard: " + (spoken || "your sentence") + ". Your sentence is close to the target."
+        : "I heard: " + (spoken || "no speech detected") + ". " +
+          (missingWords.length ? "You missed: " + missingWords.join(", ") + ". " : "") +
+          (extraWords.length ? "Check these extra words: " + extraWords.join(", ") + ". " : "") +
+          "The target sentence is: " + phrase.phrase + ".";
       const moveNext = () => {
         if (phraseIndex < phrases.length - 1) {
           setPhraseIndex((current) => Math.min(current + 1, phrases.length - 1));
@@ -252,18 +256,35 @@ function App() {
         }
       };
 
-      if (correct) {
-        setMessage("Correct! I heard: “" + spoken + "”. I'll say the next phrase now.");
-        speakFeedback("Correct. Well done. Next phrase.", moveNext);
-      } else {
-        const mistakeParts: string[] = [];
-        if (missingWords.length) mistakeParts.push("You missed these words: " + missingWords.join(", ") + ".");
-        if (extraWords.length) mistakeParts.push("These words did not match: " + extraWords.join(", ") + ".");
-        if (!missingWords.length && !extraWords.length) mistakeParts.push("Please speak a little more clearly.");
-        const feedback = "I heard: " + (spoken || "no speech detected") + ". " + mistakeParts.join(" ") + " The correct sentence is: " + phrase.phrase + ". Moving to the next phrase.";
+      const evaluate = async () => {
+        let correct = localCorrect;
+        let feedback = localFeedback;
+        let coachSource = "Practice coach";
+        if (authenticated && apiBase) {
+          try {
+            const response = await fetch(apiBase + "/speaking/feedback", {
+              method: "POST",
+              credentials: "include",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ targetPhrase: phrase.phrase, transcript: spoken, language: profile.targetLanguage, level: profile.level }),
+            });
+            const payload = await response.json() as { message?: string; data?: { correct: boolean; correctedSentence: string; feedback: string; spokenFeedback: string; missingWords: string[]; pronunciationTip: string } };
+            if (response.ok && payload.data) {
+              correct = payload.data.correct;
+              feedback = payload.data.feedback + (payload.data.correctedSentence !== phrase.phrase ? " Suggested sentence: " + payload.data.correctedSentence : "") + (payload.data.pronunciationTip ? " Pronunciation tip: " + payload.data.pronunciationTip : "");
+              coachSource = "AI speaking coach";
+              setMessage(coachSource + ": " + feedback);
+              speakFeedback(payload.data.spokenFeedback, moveNext);
+              return;
+            }
+          } catch {
+            // Continue with local transcript feedback when the AI service is temporarily unavailable.
+          }
+        }
         setMessage(feedback);
-        speakFeedback(feedback, moveNext);
-      }
+        speakFeedback(correct ? "Well done. " + feedback + " Moving to the next phrase." : feedback + " Moving to the next phrase.", moveNext);
+      };
+      void evaluate();
     };
     recognition.onerror = (event) => {
       setIsListening(false);
