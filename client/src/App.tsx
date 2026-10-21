@@ -182,7 +182,7 @@ function App() {
 
     const speakFeedback = (text: string, onFinished: () => void) => {
       if (!("speechSynthesis" in window)) {
-        window.setTimeout(onFinished, 2500);
+        setTimeout(onFinished, 2500);
         return;
       }
       window.speechSynthesis.cancel();
