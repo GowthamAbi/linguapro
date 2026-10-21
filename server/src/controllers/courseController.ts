@@ -93,18 +93,24 @@ export async function completeStudentLesson(request: AuthenticatedRequest, respo
     return;
   }
   const { CourseEnrollment } = await import("../models/CourseEnrollment");
+  const { User } = await import("../models/User");
+  const existing = await CourseEnrollment.findOne({ studentId: request.userId, courseId });
+  const alreadyCompleted = Boolean(existing?.completedLessonIds.includes(lessonId));
   const enrollment = await CourseEnrollment.findOneAndUpdate(
     { studentId: request.userId, courseId },
     { $addToSet: { completedLessonIds: lessonId } },
     { new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true },
   );
   const lessonCount = course.modules.reduce((sum, module) => sum + module.lessons.length, 0);
-  if (lessonCount > 0 && enrollment.completedLessonIds.length >= lessonCount && !enrollment.completedAt) {
+  const justCompletedCourse = lessonCount > 0 && enrollment.completedLessonIds.length >= lessonCount && !enrollment.completedAt;
+  if (justCompletedCourse) {
     enrollment.completedAt = new Date();
     await enrollment.save();
   }
+  const xpEarned = alreadyCompleted ? 0 : 10;
+  const user = xpEarned > 0 ? await User.findByIdAndUpdate(request.userId, { $inc: { totalXp: xpEarned } }, { new: true }).select("totalXp") : await User.findById(request.userId).select("totalXp");
   response.json({
-    message: "Lesson progress saved.",
-    data: { completedLessonIds: enrollment.completedLessonIds, completedLessons: enrollment.completedLessonIds.length, totalLessons: lessonCount, courseCompleted: Boolean(enrollment.completedAt) },
+    message: alreadyCompleted ? "This lesson was already completed." : "Lesson completed! You earned " + xpEarned + " XP.",
+    data: { completedLessonIds: enrollment.completedLessonIds, completedLessons: enrollment.completedLessonIds.length, totalLessons: lessonCount, courseCompleted: Boolean(enrollment.completedAt), xpEarned, totalXp: user?.totalXp ?? 0 },
   });
 }
