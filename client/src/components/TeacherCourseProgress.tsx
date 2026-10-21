@@ -8,6 +8,7 @@ type ProgressRow = {
   studentName: string;
   studentEmail: string;
   studentLevel: string;
+  studentTotalXp: number;
   completedLessons: number;
   totalLessons: number;
   completionPercent: number;
@@ -54,7 +55,7 @@ export default function TeacherCourseProgress({ apiBase }: { apiBase: string }) 
     </div>
     {error && <p className="inline-message">{error}</p>}
     {loading && !report ? <p className="muted-small">Loading learner progress…</p> : report?.rows.length ? <div className="owner-table-wrap teacher-progress-table-wrap">
-      <table className="owner-table"><thead><tr><th>Student</th><th>Course</th><th>Lessons</th><th>Progress</th><th>Last activity</th><th>Status</th></tr></thead>
+      <table className="owner-table"><thead><tr><th>Student</th><th>Course</th><th>Lessons</th><th>Progress</th><th>Total XP</th><th>Last activity</th><th>Status</th></tr></thead>
         <tbody>{report.rows.map((row) => <tr key={row.courseId + ":" + row.studentId}>
           <td><strong>{row.studentName}</strong><br /><span className="muted-small">{row.studentEmail}</span></td>
           <td>{row.courseTitle}</td>
