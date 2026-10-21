@@ -9,6 +9,7 @@ import profileRoutes from "./routes/profileRoutes";
 import progressRoutes from "./routes/progressRoutes";
 import speakingRoutes from "./routes/speakingRoutes";
 import assignmentRoutes from "./routes/assignmentRoutes";
+import courseRoutes from "./routes/courseRoutes";
 
 const app = express();
 const allowedOrigins = (process.env.CLIENT_ORIGIN ?? "http://localhost:5173")
@@ -48,6 +49,7 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/progress", progressRoutes);
 app.use("/api/speaking", speakingRoutes);
 app.use("/api/assignments", assignmentRoutes);
+app.use("/api/courses", courseRoutes);
 app.use((_request, response) => response.status(404).json({ message: "API route not found." }));
 
 const errorHandler: ErrorRequestHandler = (error, _request, response, _next) => {
