@@ -213,16 +213,22 @@ function App() {
     let handledResult = false;
 
     const speakFeedback = (text: string, onFinished: () => void) => {
+      let finished = false;
+      const finish = () => {
+        if (finished) return;
+        finished = true;
+        onFinished();
+      };
       if (!("speechSynthesis" in window)) {
-        setTimeout(onFinished, 2500);
+        setTimeout(finish, 2500);
         return;
       }
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = profile.targetLanguage === "Hindi" ? "hi-IN" : profile.targetLanguage === "Malayalam" ? "ml-IN" : profile.targetLanguage === "Kannada" ? "kn-IN" : profile.targetLanguage === "Telugu" ? "te-IN" : "en-IN";
       utterance.rate = 0.9;
-      utterance.onend = onFinished;
-      utterance.onerror = onFinished;
+      utterance.onend = finish;
+      utterance.onerror = finish;
       window.speechSynthesis.speak(utterance);
     };
 
