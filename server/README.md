@@ -39,7 +39,12 @@ Health check: `GET http://localhost:4000/api/health`
 - `GET /api/profile` — read profile
 - `PATCH /api/profile` — update profile preferences
 - `GET /api/progress` — read progress and history
-- `POST /api/progress/complete` — complete a daily task\n- `GET /api/admin/overview` — owner-only account and learning summary\n- `GET /api/admin/users` — owner-only list of all registered accounts\n- `GET /api/admin/users?type=students` — owner-only list of accounts with recorded learning XP\n- `GET /api/admin/activity` — owner-only recent learning activity\n\nFor owner access, set `OWNER_EMAIL` on Render to the owner account email. Set `VITE_OWNER_EMAIL` in Netlify to the same email so the owner navigation is displayed. The API independently checks `OWNER_EMAIL`; the frontend variable is not a security control.
+- `POST /api/progress/complete` — complete a daily task
+- `POST /api/speaking/feedback` — authenticated AI feedback for a speech-recognition transcript\n- `GET /api/admin/overview` — owner-only account and learning summary\n- `GET /api/admin/users` — owner-only list of all registered accounts\n- `GET /api/admin/users?type=students` — owner-only list of accounts with recorded learning XP\n- `GET /api/admin/activity` — owner-only recent learning activity\n\nFor owner access, set `OWNER_EMAIL` on Render to the owner account email. Set `VITE_OWNER_EMAIL` in Netlify to the same email so the owner navigation is displayed. The API independently checks `OWNER_EMAIL`; the frontend variable is not a security control.
+
+## AI speaking feedback setup
+
+Set `AI_PROVIDER_API_KEY` in the Render backend environment. The default provider is OpenAI-compatible at `https://api.openai.com/v1`; optionally set `AI_PROVIDER_BASE_URL` and `AI_MODEL` (`gpt-4o-mini` by default). Never put this key in Netlify or client-side code. Signed-in learners send the recognized text transcript and target phrase to the backend for feedback; raw audio is not uploaded or stored by this feature. If AI is unavailable or not configured, the speaking page falls back to local transcript-based feedback.
 
 Passwords are hashed with bcrypt. JWT sessions use an HTTP-only cookie. Keep `.env` out of Git.
 
