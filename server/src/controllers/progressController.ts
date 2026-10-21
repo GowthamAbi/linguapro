@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { AuthenticatedRequest } from "../middleware/authenticate";
 import { LearningProgress } from "../models/LearningProgress";
 import { User } from "../models/User";
+import { XpEvent } from "../models/XpEvent";
 
 const taskRewards: Record<string, number> = { words: 10, speak: 15, listen: 10, review: 5 };
 const taskSchema = z.object({ taskId: z.enum(["words", "speak", "listen", "review"]) });
@@ -57,6 +58,7 @@ export async function completeTask(
     }
 
     user.totalXp = Number(user.totalXp) + xpEarned;
+    await XpEvent.create({ userId: request.userId, source: parsed.data.taskId, sourceId: String(progress._id), label: parsed.data.taskId.charAt(0).toUpperCase() + parsed.data.taskId.slice(1) + " practice", xpEarned, earnedOn: today });
 
     if (user.lastActiveDate !== today) {
       const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
