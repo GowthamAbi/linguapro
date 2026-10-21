@@ -56,11 +56,11 @@ export async function completeTask(
       return;
     }
 
-    user.totalXp += xpEarned;
+    user.totalXp = Number(user.totalXp) + xpEarned;
 
     if (user.lastActiveDate !== today) {
       const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
-      user.currentStreak = user.lastActiveDate === yesterday ? user.currentStreak + 1 : 1;
+      user.currentStreak = user.lastActiveDate === yesterday ? Number(user.currentStreak) + 1 : 1;
       user.lastActiveDate = today;
     }
 
