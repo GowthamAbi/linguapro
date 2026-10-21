@@ -113,9 +113,10 @@ export default function StudentCourseLibrary({ apiBase }: { apiBase: string }) {
           <button className="button button-outline" onClick={() => setExpanded(isExpanded ? "" : course._id)}>{isExpanded ? "Hide lessons" : "Open course"} {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</button>
         </div>
         <div className="student-course-progress">
-          <div><strong>{(progress[course._id]?.completedLessonIds ?? []).length}/{lessonCount} lessons completed</strong><span>{lessonCount ? Math.round(((progress[course._id] ?? []).length / lessonCount) * 100) : 0}%</span></div>
-          <div className="student-progress-track"><span style={{ width: (lessonCount ? Math.min(100, ((progress[course._id] ?? []).length / lessonCount) * 100) : 0) + "%" }} /></div>
+          <div><strong>{completedIds.length}/{lessonCount} lessons completed</strong><span>{lessonCount ? Math.round((completedIds.length / lessonCount) * 100) : 0}%</span></div>
+          <div className="student-progress-track"><span style={{ width: (lessonCount ? Math.min(100, (completedIds.length / lessonCount) * 100) : 0) + "%" }} /></div>
         </div>
+        {courseDone && <section className="student-certificate"><div className="certificate-seal"><Award size={28} /></div><span className="certificate-kicker">CERTIFICATE OF COMPLETION</span><h3>{course.title}</h3><p>This recognises successful completion of the course by the signed-in learner.</p><div className="certificate-signature"><span>LinguaPro Learning</span><small>{progress[course._id]?.completedAt ? new Date(progress[course._id]?.completedAt as string).toLocaleDateString() : "Completed"}</small></div><button className="button button-outline certificate-print-button" onClick={() => window.print()}><Award size={15} /> Print / Save certificate</button></section>}
         {isExpanded && <div className="student-course-lessons">
           {course.modules.length === 0 && <p>This course has no modules yet. Check back soon.</p>}
           {course.modules.map((module, moduleIndex) => <section className="student-module" key={module._id}>
