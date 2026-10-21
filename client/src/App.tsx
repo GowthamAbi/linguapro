@@ -59,6 +59,9 @@ function App() {
     } catch { return defaultTasks; }
   });
   const [phraseIndex, setPhraseIndex] = useState(0);
+  const [vocabAnswers, setVocabAnswers] = useState<Record<string, string>>({});
+  const [vocabChecked, setVocabChecked] = useState<Record<string, boolean>>({});
+  const [vocabCompleted, setVocabCompleted] = useState<string[]>([]);
   const [isListening, setIsListening] = useState(false);
   const [sessionComplete, setSessionComplete] = useState(false);
   const [message, setMessage] = useState("");
@@ -538,18 +541,39 @@ function App() {
           </>}
 
           {page === "vocabulary" && <>
-            <PageTitle eyebrow="WORD BY WORD" title="Vocabulary builder" subtitle="Useful words for everyday life and your workplace." />
+            <PageTitle eyebrow="WORD BY WORD" title="Vocabulary builder" subtitle="Listen, understand, speak, and check what you learned." />
+            <section className="vocab-learning-intro surface-card">
+              <div><span className="tag">DAILY PRACTICE</span><h3>Learn one word at a time</h3><p>1. Listen to the word. 2. Read the Tamil meaning. 3. Say the example aloud. 4. Answer the quick question.</p></div>
+              <div className="vocab-score"><strong>{vocabCompleted.length}/6</strong><span>words practised</span></div>
+            </section>
             <div className="vocabulary-grid">{[
-              ["Improve", "To make something better.", "I want to improve my English."],
-              ["Schedule", "A plan that lists when things happen.", "I will check the production schedule."],
-              ["Resolve", "To find a solution to a problem.", "Our team will resolve the issue."],
-              ["Reliable", "Able to be trusted or depended on.", "We need a reliable machine."],
-              ["Available", "Free or ready to be used.", "The mechanic is available now."],
-              ["Complete", "To finish doing something.", "I will complete the task today."],
-            ].map(([word, meaning, example]) => <article className="word-card" key={word}><div className="word-letter">{word[0]}</div><div><h3>{word}</h3><p>{meaning}</p><div className="word-example">{example}</div></div><button className="icon-button" aria-label={"Listen to " + word} onClick={() => { if ("speechSynthesis" in window) window.speechSynthesis.speak(new SpeechSynthesisUtterance(word)); }}><Volume2 size={17} /></button></article>)}</div>
+              { word: "Improve", meaning: "To make something better.", tamil: "மேம்படுத்துதல் / இன்னும் சிறப்பாகச் செய்தல்", example: "I want to improve my English.", question: "What does Improve mean?", options: ["To make better", "To stop working", "To arrive late"], answer: "To make better" },
+              { word: "Schedule", meaning: "A plan that lists when things happen.", tamil: "வேலைகள் எப்போது நடக்க வேண்டும் என்பதைக் காட்டும் அட்டவணை", example: "I will check the production schedule.", question: "What will you check?", options: ["The production schedule", "The lunch menu", "The bus ticket"], answer: "The production schedule" },
+              { word: "Resolve", meaning: "To find a solution to a problem.", tamil: "ஒரு பிரச்சினைக்குத் தீர்வு காணுதல்", example: "Our team will resolve the issue.", question: "What does Resolve mean?", options: ["Create a problem", "Find a solution", "Forget the task"], answer: "Find a solution" },
+              { word: "Reliable", meaning: "Able to be trusted or depended on.", tamil: "நம்பகமான / நம்பி ஒப்படைக்கக்கூடிய", example: "We need a reliable machine.", question: "What kind of machine do we need?", options: ["A reliable machine", "A broken machine", "A new schedule"], answer: "A reliable machine" },
+              { word: "Available", meaning: "Free or ready to be used.", tamil: "கிடைக்கக்கூடிய / பயன்படுத்தத் தயாராக இருக்கும்", example: "The mechanic is available now.", question: "Who is ready now?", options: ["The manager", "The mechanic", "The customer"], answer: "The mechanic" },
+              { word: "Complete", meaning: "To finish doing something.", tamil: "ஒரு வேலையை முடித்தல்", example: "I will complete the task today.", question: "When will I finish the task?", options: ["Yesterday", "Next month", "Today"], answer: "Today" },
+            ].map((item) => {
+              const checked = !!vocabChecked[item.word];
+              const correct = vocabAnswers[item.word] === item.answer;
+              const done = vocabCompleted.includes(item.word);
+              return <article className="word-card vocab-lesson-card" key={item.word}>
+                <div className="word-letter">{item.word[0]}</div>
+                <div className="vocab-lesson-content">
+                  <div className="vocab-word-heading"><div><h3>{item.word}</h3><p>{item.meaning}</p></div><button className="icon-button" aria-label={"Listen to " + item.word} onClick={() => { if ("speechSynthesis" in window) { window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance(item.word)); } }}><Volume2 size={17} /></button></div>
+                  <div className="vocab-tamil"><strong>தமிழ் அர்த்தம்:</strong> {item.tamil}</div>
+                  <div className="word-example"><strong>Example:</strong> {item.example}</div>
+                  <div className="vocab-actions"><button className="button button-outline" onClick={() => { if ("speechSynthesis" in window) { window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance(item.example)); } }}><Volume2 size={15} /> Listen to sentence</button><button className="button button-primary" onClick={() => { if ("speechSynthesis" in window) { window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance(item.example)); } }}>Listen & repeat</button></div>
+                  <div className="vocab-quiz"><strong>{item.question}</strong><div className="vocab-options">{item.options.map(option => <label className={"vocab-option " + (checked && option === item.answer ? "is-correct" : "") + (checked && vocabAnswers[item.word] === option && option !== item.answer ? " is-wrong" : "")} key={option}><input type="radio" name={"vocab-" + item.word} value={option} checked={vocabAnswers[item.word] === option} onChange={() => { setVocabAnswers(prev => ({ ...prev, [item.word]: option })); setVocabChecked(prev => ({ ...prev, [item.word]: false })); }} />{option}</label>)}</div>
+                    {!checked ? <button className="button button-outline" disabled={!vocabAnswers[item.word]} onClick={() => { setVocabChecked(prev => ({ ...prev, [item.word]: true })); if (correct && !done) setVocabCompleted(prev => [...prev, item.word]); }}>Check answer</button> : <div className={"vocab-feedback " + (correct ? "feedback-correct" : "feedback-wrong")}>{correct ? "Correct! நல்ல பதில்." : "Not quite. சரியான பதில்: " + item.answer}{!correct && <button className="inline-link" onClick={() => { setVocabAnswers(prev => ({ ...prev, [item.word]: item.answer })); setVocabChecked(prev => ({ ...prev, [item.word]: true })); if (!done) setVocabCompleted(prev => [...prev, item.word]); }}>Show correct answer</button>}</div>}
+                  </div>
+                </div>
+                {done && <span className="vocab-done" title="Practised"><Check size={16} /></span>}
+              </article>;
+            })}</div>
           </>}
 
-          {page === "progress" && <>
+{page === "progress" && <>
             <PageTitle eyebrow="YOUR ACHIEVEMENTS" title="My progress" subtitle="Celebrate the small wins that build lasting skills." />
             <div className="stats-grid"><StatCard icon={<Flame />} label="Practice streak" value={(serverStreak || (completed ? 1 : 0)) + (serverStreak === 1 || (!serverStreak && completed) ? " day" : " days")} detail="Days practised in a row" /><StatCard icon={<Star />} label="Total XP" value={String(xp)} detail="Points earned" /><StatCard icon={<Check />} label="Tasks completed" value={String(completed)} detail="In this demo session" /></div>
             <section className="surface-card progress-detail"><h3>Daily activity</h3><p className="muted-small">Today's learning plan</p>{tasks.map((task) => <div className="activity-row" key={task.id}><span className={"activity-check " + (task.completed ? "complete" : "")}>{task.completed ? <Check size={15} /> : <Target size={13} />}</span><div className="activity-copy"><strong>{task.title}</strong><span>{task.duration}</span></div><b>{task.completed ? "+" + task.xp + " XP" : "Not started"}</b></div>)}</section>
