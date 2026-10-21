@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AudioLines, BookOpen, Check, ChevronRight, CircleUserRound, Crown,
   Flame, GraduationCap, Languages, LayoutDashboard, LockKeyhole, LogIn,
@@ -62,8 +62,44 @@ function App() {
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [busy, setBusy] = useState(false);
-  const completed = tasks.filter((task) => task.completed).length;
-  const xp = tasks.filter((task) => task.completed).reduce((sum, task) => sum + task.xp, 0);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [serverXp, setServerXp] = useState<number | null>(null);
+  const [serverStreak, setServerStreak] = useState(0);
+  const [serverCompletedIds, setServerCompletedIds] = useState<string[]>([]);
+
+  const apiBase = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\\/$/, "") ?? "";
+
+  async function loadServerProgress() {
+    if (!apiBase) return;
+    try {
+      const response = await fetch(apiBase + "/progress", { credentials: "include" });
+      if (!response.ok) return;
+      const payload = await response.json() as { data?: { totalXp?: number; currentStreak?: number; completedToday?: Array<{ taskId: string }> } };
+      if (payload.data) {
+        setServerXp(Number(payload.data.totalXp ?? 0));
+        setServerStreak(Number(payload.data.currentStreak ?? 0));
+        setServerCompletedIds((payload.data.completedToday ?? []).map((item) => item.taskId));
+      }
+    } catch { /* Keep the local demo usable if the API is temporarily unavailable. */ }
+  }
+
+  useEffect(() => {
+    if (!apiBase) return;
+    fetch(apiBase + "/auth/me", { credentials: "include" })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const payload = await response.json() as { data?: { user?: { name?: string; email?: string; nativeLanguage?: string; targetLanguage?: string; level?: LearningLevel; plan?: "Free" | "Premium" } } };
+        const user = payload.data?.user;
+        if (user) {
+          setAuthenticated(true);
+          setProfile((current) => ({ ...current, ...user }));
+          await loadServerProgress();
+        }
+      })
+      .catch(() => undefined);
+  }, []);
+  const completed = tasks.filter((task) => task.completed || serverCompletedIds.includes(task.id)).length;
+  const xp = serverXp ?? tasks.filter((task) => task.completed).reduce((sum, task) => sum + task.xp, 0);
   const phrase = phrases[phraseIndex];
 
   function navigate(next: Page) {
@@ -79,11 +115,34 @@ function App() {
     localStorage.setItem("linguapro-profile", JSON.stringify(next));
   }
 
-  function completeTask(id: string) {
+  async function completeTask(id: string) {
+    if (tasks.some((task) => task.id === id && task.completed) || serverCompletedIds.includes(id)) {
+      setMessage("You have already completed this task today.");
+      return;
+    }
+    if (authenticated && apiBase) {
+      try {
+        const response = await fetch(apiBase + "/progress/complete", {
+          method: "POST", credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ taskId: id }),
+        });
+        const payload = await response.json() as { message?: string; data?: { totalXp?: number; currentStreak?: number } };
+        if (!response.ok) throw new Error(payload.message ?? "Could not save progress.");
+        setServerXp(Number(payload.data?.totalXp ?? 0));
+        setServerStreak(Number(payload.data?.currentStreak ?? 0));
+        setServerCompletedIds((current) => [...current, id]);
+        setMessage("Great work! Your progress is saved to your account.");
+        return;
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : "Could not save progress to your account.");
+        return;
+      }
+    }
     const next = tasks.map((task) => task.id === id ? { ...task, completed: true } : task);
     setTasks(next);
     localStorage.setItem("linguapro-tasks", JSON.stringify(next));
-    setMessage("Great work! Your learning progress is saved on this device.");
+    setMessage("Sign in to save your learning progress to your account. This demo progress is saved on this device.");
   }
 
   function playPhrase() {
@@ -146,6 +205,8 @@ function App() {
       if (!response.ok) throw new Error(payload.message ?? "Unable to sign in.");
       if (payload.data?.user?.name) saveProfile("name", payload.data.user.name);
       if (payload.data?.user?.email) saveProfile("email", payload.data.user.email);
+      setAuthenticated(true);
+      await loadServerProgress();
       setAuthMode(null);
       setMessage("You are signed in.");
     } catch (error) {
@@ -197,7 +258,7 @@ function App() {
               <div className="hero-illustration"><div className="bubble bubble-one">Hello!</div><div className="bubble bubble-two">வணக்கம்</div><div className="hero-circle"><Languages size={55} /></div><Sparkles className="hero-sparkle" size={25} /></div>
             </section>
             <section className="stats-grid">
-              <StatCard icon={<Flame />} label="Practice streak" value={completed ? "1 day" : "0 days"} detail="Keep your rhythm" />
+              <StatCard icon={<Flame />} label="Practice streak" value={(serverStreak || (completed ? 1 : 0)) + (serverStreak === 1 || (!serverStreak && completed) ? " day" : " days")} detail="Keep your rhythm" />
               <StatCard icon={<Star />} label="Learning points" value={xp + " XP"} detail="Earn XP as you learn" />
               <StatCard icon={<Target />} label="Today's tasks" value={completed + " / " + tasks.length} detail="Your daily goal" />
             </section>
@@ -237,13 +298,13 @@ function App() {
 
           {page === "progress" && <>
             <PageTitle eyebrow="YOUR ACHIEVEMENTS" title="My progress" subtitle="Celebrate the small wins that build lasting skills." />
-            <div className="stats-grid"><StatCard icon={<Flame />} label="Practice streak" value={completed ? "1 day" : "0 days"} detail="Days practised in a row" /><StatCard icon={<Star />} label="Total XP" value={String(xp)} detail="Points earned" /><StatCard icon={<Check />} label="Tasks completed" value={String(completed)} detail="In this demo session" /></div>
+            <div className="stats-grid"><StatCard icon={<Flame />} label="Practice streak" value={(serverStreak || (completed ? 1 : 0)) + (serverStreak === 1 || (!serverStreak && completed) ? " day" : " days")} detail="Days practised in a row" /><StatCard icon={<Star />} label="Total XP" value={String(xp)} detail="Points earned" /><StatCard icon={<Check />} label="Tasks completed" value={String(completed)} detail="In this demo session" /></div>
             <section className="surface-card progress-detail"><h3>Daily activity</h3><p className="muted-small">Today's learning plan</p>{tasks.map((task) => <div className="activity-row" key={task.id}><span className={"activity-check " + (task.completed ? "complete" : "")}>{task.completed ? <Check size={15} /> : <Target size={13} />}</span><div className="activity-copy"><strong>{task.title}</strong><span>{task.duration}</span></div><b>{task.completed ? "+" + task.xp + " XP" : "Not started"}</b></div>)}</section>
           </>}
 
           {page === "profile" && <>
             <PageTitle eyebrow="MAKE IT YOURS" title="Profile & settings" subtitle="Personalise your learning experience." />
-            <section className="surface-card settings-card"><div className="profile-header"><div className="profile-avatar"><CircleUserRound size={35} /></div><div><h3>{profile.name || "Learner"}</h3><p>{profile.email || "Your email will appear here after sign in."}</p><span className="tag">{profile.plan.toUpperCase()} PLAN</span></div></div><div className="form-grid"><label>Display name<input value={profile.name} onChange={(event) => saveProfile("name", event.target.value)} /></label><label>Native language<select value={profile.nativeLanguage} onChange={(event) => saveProfile("nativeLanguage", event.target.value)}>{["Tamil", "English", "Malayalam", "Hindi", "Kannada", "Telugu"].map((language) => <option key={language}>{language}</option>)}</select></label><label>Learning language<select value={profile.targetLanguage} onChange={(event) => saveProfile("targetLanguage", event.target.value)}>{["English", "Malayalam", "Hindi", "Kannada", "Telugu", "Tamil"].map((language) => <option key={language}>{language}</option>)}</select></label><label>Learning level<select value={profile.level} onChange={(event) => saveProfile("level", event.target.value as LearningLevel)}>{["Basic", "Intermediate", "Advanced"].map((level) => <option key={level}>{level}</option>)}</select></label></div><p className="notice">Settings are saved in this browser until the backend is connected.</p><button className="button button-primary" onClick={() => setMessage("Your preferences are saved on this device.")}>Save preferences <Check size={16} /></button>{message && <div className="inline-message">{message}</div>}</section>
+            <section className="surface-card settings-card"><div className="profile-header"><div className="profile-avatar"><CircleUserRound size={35} /></div><div><h3>{profile.name || "Learner"}</h3><p>{profile.email || "Your email will appear here after sign in."}</p><span className="tag">{profile.plan.toUpperCase()} PLAN</span></div></div><div className="form-grid"><label>Display name<input value={profile.name} onChange={(event) => saveProfile("name", event.target.value)} /></label><label>Native language<select value={profile.nativeLanguage} onChange={(event) => saveProfile("nativeLanguage", event.target.value)}>{["Tamil", "English", "Malayalam", "Hindi", "Kannada", "Telugu"].map((language) => <option key={language}>{language}</option>)}</select></label><label>Learning language<select value={profile.targetLanguage} onChange={(event) => saveProfile("targetLanguage", event.target.value)}>{["English", "Malayalam", "Hindi", "Kannada", "Telugu", "Tamil"].map((language) => <option key={language}>{language}</option>)}</select></label><label>Learning level<select value={profile.level} onChange={(event) => saveProfile("level", event.target.value as LearningLevel)}>{["Basic", "Intermediate", "Advanced"].map((level) => <option key={level}>{level}</option>)}</select></label></div><p className="notice">{authenticated ? "Your account is connected. Profile preferences are currently stored on this device." : "Sign in to connect your account and sync learning progress."}</p><button className="button button-primary" onClick={() => setMessage("Your preferences are saved on this device.")}>Save preferences <Check size={16} /></button>{message && <div className="inline-message">{message}</div>}</section>
           </>}
 
           {page === "plans" && <>
