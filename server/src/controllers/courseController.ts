@@ -71,3 +71,50 @@ export async function listPublishedStudentCourses(request: AuthenticatedRequest,
     .lean();
   response.json({ data: { courses } });
 }
+
+
+export async function listPublishedStudentCourses(request: AuthenticatedRequest, response: Response): Promise<void> {
+  const [courses, enrollments] = await Promise.all([
+    Course.find({ status: "published" })
+      .select("title description learnerCategory level industry goal modules teacherId createdAt")
+      .populate("teacherId", "name")
+      .sort({ createdAt: -1 })
+      .lean(),
+    (await import("../models/CourseEnrollment")).CourseEnrollment.find({ studentId: request.userId }).lean(),
+  ]);
+  const progressByCourse = new Map(enrollments.map((item) => [String(item.courseId), item.completedLessonIds]));
+  response.json({ data: { courses, progress: Object.fromEntries(progressByCourse) } });
+}
+
+export async function completeStudentLesson(request: AuthenticatedRequest, response: Response): Promise<void> {
+  const { courseId, lessonId } = request.params;
+  if (!mongoose.isValidObjectId(courseId) || !mongoose.isValidObjectId(lessonId)) {
+    response.status(400).json({ message: "Invalid course or lesson ID." });
+    return;
+  }
+  const course = await Course.findOne({ _id: courseId, status: "published" }).select("modules");
+  if (!course) {
+    response.status(404).json({ message: "Published course not found." });
+    return;
+  }
+  const lessonExists = course.modules.some((module) => module.lessons.some((lesson) => String(lesson._id) === lessonId));
+  if (!lessonExists) {
+    response.status(404).json({ message: "Lesson not found in this course." });
+    return;
+  }
+  const { CourseEnrollment } = await import("../models/CourseEnrollment");
+  const enrollment = await CourseEnrollment.findOneAndUpdate(
+    { studentId: request.userId, courseId },
+    { $addToSet: { completedLessonIds: lessonId } },
+    { new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true },
+  );
+  const lessonCount = course.modules.reduce((sum, module) => sum + module.lessons.length, 0);
+  if (lessonCount > 0 && enrollment.completedLessonIds.length >= lessonCount && !enrollment.completedAt) {
+    enrollment.completedAt = new Date();
+    await enrollment.save();
+  }
+  response.json({
+    message: "Lesson progress saved.",
+    data: { completedLessonIds: enrollment.completedLessonIds, completedLessons: enrollment.completedLessonIds.length, totalLessons: lessonCount, courseCompleted: Boolean(enrollment.completedAt) },
+  });
+}
