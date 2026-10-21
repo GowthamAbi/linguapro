@@ -81,6 +81,9 @@ function App() {
   const [isListening, setIsListening] = useState(false);
   const [sessionComplete, setSessionComplete] = useState(false);
   const [message, setMessage] = useState("");
+  const [spokenTranscript, setSpokenTranscript] = useState("");
+  const [coachCorrect, setCoachCorrect] = useState<boolean | null>(null);
+  const [coachAttempts, setCoachAttempts] = useState(0);
   const [authMode, setAuthMode] = useState<"login" | "register" | null>(null);
   const [authName, setAuthName] = useState("");
   const [authEmail, setAuthEmail] = useState("");
@@ -211,6 +214,7 @@ function App() {
     setPage(next);
     setMenuOpen(false);
     setMessage("");
+    if (next === "speaking") { setSpokenTranscript(""); setCoachCorrect(null); setCoachAttempts(0); }
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -326,7 +330,12 @@ function App() {
           (missingWords.length ? "You missed: " + missingWords.join(", ") + ". " : "") +
           (extraWords.length ? "Check these extra words: " + extraWords.join(", ") + ". " : "") +
           "The target sentence is: " + phrase.phrase + ".";
-      const moveNext = () => {
+      setSpokenTranscript(spoken);
+      setCoachCorrect(null);
+      setCoachAttempts((attempts) => attempts + 1);
+      const moveNext = (passed: boolean) => {
+        setCoachCorrect(passed);
+        if (!passed) { setMessage("Let’s try once more. Read the target sentence, then tap Try speaking."); return; }
         if (phraseIndex < phrases.length - 1) {
           setPhraseIndex((current) => Math.min(current + 1, phrases.length - 1));
           setMessage("Next phrase. Listen and speak when you are ready.");
@@ -355,7 +364,7 @@ function App() {
               feedback = payload.data.feedback + (payload.data.correctedSentence !== phrase.phrase ? " Suggested sentence: " + payload.data.correctedSentence : "") + (payload.data.pronunciationTip ? " Pronunciation tip: " + payload.data.pronunciationTip : "");
               coachSource = "AI speaking coach";
               setMessage(coachSource + ": " + feedback);
-              speakFeedback(payload.data.spokenFeedback, moveNext);
+              speakFeedback(payload.data.spokenFeedback, () => moveNext(payload.data!.correct));
               return;
             }
           } catch {
@@ -363,7 +372,7 @@ function App() {
           }
         }
         setMessage(feedback);
-        speakFeedback(correct ? "Well done. " + feedback + " Moving to the next phrase." : feedback + " Moving to the next phrase.", moveNext);
+        speakFeedback(correct ? "Well done. " + feedback + " Moving to the next phrase." : feedback + " Please try again.", () => moveNext(correct));
       };
       void evaluate();
     };
@@ -552,11 +561,24 @@ function App() {
           </>}
 
           {page === "speaking" && <>
-            <PageTitle eyebrow="SPEAK WITH CONFIDENCE" title="Speaking practice" subtitle="Listen to a phrase, say it aloud, and practise real-life conversations." />
-            <section className="surface-card speaking-card"><div className="speaking-top"><span className="tag">{profile.targetLanguage.toUpperCase()} · {profile.level.toUpperCase()}</span><span className="muted-small">Phrase {phraseIndex + 1} of {phrases.length}</span></div><div className="phrase-mark">“</div><h2 className="practice-phrase">{phrase.phrase}</h2><p className="phrase-meaning">{phrase.meaning}</p><div className="example-box"><span>EXAMPLE</span><p>{phrase.example}</p></div><div className="practice-controls"><button className="button button-primary" onClick={playPhrase} disabled={isListening}><Volume2 size={17} /> Listen to phrase</button><button className="button button-outline" onClick={recordSpeech} disabled={isListening || sessionComplete}><Mic size={17} /> {isListening ? "Listening…" : "Try speaking"}</button><button className="button button-outline" onClick={() => { setPhraseIndex((current) => Math.min(current + 1, phrases.length - 1)); setMessage(""); }} disabled={isListening || sessionComplete || phraseIndex === phrases.length - 1}><ChevronRight size={17} /> Next phrase</button></div><p className="notice">Microphone recognition depends on browser support and permission. Voice is processed by your browser; LinguaPro does not store voice recordings.</p>{sessionComplete && <div className="inline-message"><strong>Practice complete!</strong> You finished all {phrases.length} phrases. {authenticated ? "Your speaking task XP is being saved to your account." : "Sign in to save XP to your account."}<div className="practice-controls"><button className="button button-primary" onClick={() => { setPhraseIndex(0); setSessionComplete(false); setMessage("New practice started. Listen to the first phrase."); }}>Practise again</button></div></div>}{message && <div className="inline-message">{message}</div>}</section>
+            <PageTitle eyebrow="LINGUAPRO AI COACH" title="Speak with confidence" subtitle="A personal English coach for everyday life, workplace conversations, and career growth." />
+            <section className="coach-hero"><div className="coach-hero-content"><span className="coach-eyebrow"><Sparkles size={14}/> YOUR PERSONAL SPEAKING COACH</span><h2>Think in English.<br/><span>Speak with confidence.</span></h2><p>Listen, speak naturally, get helpful corrections, and try again until you get it right.</p><div className="coach-hero-stats"><span><Flame size={15}/> Daily practice</span><span><Mic size={15}/> Voice feedback</span><span><Target size={15}/> {phrases.length} guided phrases</span></div></div><div className="coach-orb"><div className="coach-orb-inner"><AudioLines size={42}/></div><span className="coach-orb-dot dot-one"/><span className="coach-orb-dot dot-two"/><span className="coach-orb-dot dot-three"/></div></section>
+            <div className="coach-workspace"><section className="surface-card speaking-card coach-practice-card">
+              <div className="coach-progress-head"><div><span className="coach-eyebrow-light">YOUR CURRENT LESSON</span><h3>Guided speaking practice</h3></div><div className="coach-progress-ring" style={{background:"conic-gradient(#8b5cf6 "+((sessionComplete?100:(phraseIndex/phrases.length)*100))+"%, #eee8ff 0)"}}><span>{sessionComplete?100:Math.round((phraseIndex/phrases.length)*100)}%</span></div></div>
+              <div className="speaking-top"><span className="tag">{profile.targetLanguage.toUpperCase()} · {profile.level.toUpperCase()}</span><span className="muted-small">Phrase {Math.min(phraseIndex+1,phrases.length)} of {phrases.length}</span></div>
+              <div className="coach-phrase-panel"><div className="coach-phrase-icon"><Volume2 size={20}/></div><div className="phrase-mark">“</div><h2 className="practice-phrase">{phrase.phrase}</h2><p className="phrase-meaning">{phrase.meaning}</p><div className="example-box"><span>TRY THIS IN REAL LIFE</span><p>{phrase.example}</p></div></div>
+              <div className="coach-actions"><button className="button button-outline" onClick={playPhrase} disabled={isListening}><Volume2 size={17}/> Listen</button><button className="button button-primary coach-record-button" onClick={recordSpeech} disabled={isListening||sessionComplete}><Mic size={17}/>{isListening?"Listening… speak now":"Try speaking"}</button></div>
+              <div className="coach-instruction"><Mic size={16}/><span>Tap <strong>Try speaking</strong>, allow microphone access, and say the sentence clearly.</span></div>
+              {spokenTranscript && <div className="coach-transcript"><span>WHAT I HEARD</span><p>“{spokenTranscript}”</p></div>}
+              {coachCorrect!==null && <div className={"coach-result "+(coachCorrect?"coach-result-success":"coach-result-retry")}><span className="coach-result-icon">{coachCorrect?"✓":"↻"}</span><div><strong>{coachCorrect?"Well done! Sentence accepted.":"Good try — let's practise again."}</strong><p>{coachCorrect?"Your sentence matches the target well. Moving to the next phrase.":"Read the target sentence once more and try speaking again."}</p></div></div>}
+              {message && <div className="coach-feedback"><Sparkles size={17}/><div><strong>Coach feedback</strong><p>{message}</p></div></div>}
+              <p className="notice">Voice recognition depends on browser support and microphone permission. AI feedback is used when the backend AI provider is configured. Voice recordings are not stored by this app.</p>
+              {sessionComplete && <div className="inline-message"><strong>Practice complete!</strong> You finished all {phrases.length} phrases. {authenticated?"Your speaking task XP is being saved to your account.":"Sign in to save XP to your account."}<div className="practice-controls"><button className="button button-primary" onClick={()=>{setPhraseIndex(0);setSessionComplete(false);setSpokenTranscript("");setCoachCorrect(null);setCoachAttempts(0);setMessage("New practice started. Listen to the first phrase.");}}>Practise again</button></div></div>}
+              <div className="coach-footer-stats"><span><strong>{coachAttempts}</strong> speaking attempts</span><span><strong>{phraseIndex}</strong> phrases cleared</span><span><strong>{Math.max(0,phrases.length-phraseIndex)}</strong> to go</span></div>
+            </section><aside className="coach-side-panel"><div className="coach-side-icon"><GraduationCap size={23}/></div><h3>Your speaking goals</h3><p>Small, repeatable steps help you speak more naturally over time.</p><div className="coach-goal-row"><span className="coach-goal-check"><Check size={14}/></span><div><strong>Listen carefully</strong><small>Notice sentence rhythm</small></div></div><div className="coach-goal-row"><span className="coach-goal-check"><Check size={14}/></span><div><strong>Speak out loud</strong><small>Practise the whole sentence</small></div></div><div className="coach-goal-row"><span className="coach-goal-check"><Check size={14}/></span><div><strong>Learn from feedback</strong><small>Try again when needed</small></div></div><div className="coach-side-tip"><Sparkles size={16}/><span>Tip: Speak at a comfortable pace. Clear words matter more than speed.</span></div></aside></div>
           </>}
 
-          {page === "vocabulary" && <>
+{page === "vocabulary" && <>
             <PageTitle eyebrow="WORD BY WORD" title="Vocabulary builder" subtitle="Listen, repeat aloud, and answer correctly to unlock the next word." />
             <section className="vocab-learning-intro surface-card">
               <div><span className="tag">DAILY PRACTICE</span><h3>Learn one word at a time</h3><p>1. Listen to the example. 2. Press Repeat and speak the full sentence. 3. Select the correct answer. Both steps are required to continue.</p></div>
