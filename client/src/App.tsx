@@ -12,7 +12,7 @@ const phrases: LearningPhrase[] = [
   { phrase: "I would like to improve my English.", meaning: "Explain a learning goal.", example: "I would like to improve my English for work." },
   { phrase: "Could you say that again, please?", meaning: "Ask someone to repeat something.", example: "Sorry, could you say that again, please?" },
   { phrase: "I will finish this task on time.", meaning: "Talk about work and responsibility.", example: "I will finish this task on time and update my supervisor." },
-  { phrase: "Thank you for your time.", meaning: "Show appreciation.", example: "Thank you for your time and support." },
+  { phrase: "Thank you for your time and support.", meaning: "Show appreciation.", example: "Thank you for your time and support." },
 ];
 
 const defaultTasks: LearningTask[] = [
