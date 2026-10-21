@@ -127,7 +127,7 @@ export async function getTeacherCourseProgress(request: AuthenticatedRequest, re
     .lean();
   const courseIds = courses.map((course) => course._id);
   const enrollments = await CourseEnrollment.find({ courseId: { $in: courseIds } })
-    .populate("studentId", "name email level")
+    .populate("studentId", "name email level totalXp")
     .populate("courseId", "title modules status")
     .sort({ updatedAt: -1 })
     .lean();
@@ -137,7 +137,7 @@ export async function getTeacherCourseProgress(request: AuthenticatedRequest, re
     const course = courseMap.get(courseId);
     const totalLessons = course ? course.modules.reduce((sum, module) => sum + module.lessons.length, 0) : 0;
     const student = enrollment.studentId && typeof enrollment.studentId === "object" && "name" in enrollment.studentId
-      ? enrollment.studentId as { _id: unknown; name: string; email: string; level?: string }
+      ? enrollment.studentId as { _id: unknown; name: string; email: string; level?: string; totalXp?: number }
       : null;
     return {
       courseId,
@@ -146,6 +146,7 @@ export async function getTeacherCourseProgress(request: AuthenticatedRequest, re
       studentName: student?.name ?? "Student",
       studentEmail: student?.email ?? "",
       studentLevel: student?.level ?? "",
+      studentTotalXp: student?.totalXp ?? 0,
       completedLessons: enrollment.completedLessonIds.length,
       totalLessons,
       completionPercent: totalLessons ? Math.min(100, Math.round(enrollment.completedLessonIds.length / totalLessons * 100)) : 0,
