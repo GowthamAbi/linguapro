@@ -61,3 +61,13 @@ export async function updateCourse(request: AuthenticatedRequest, response: Resp
   }
   response.json({ message: "Course updated.", data: { course } });
 }
+
+
+export async function listPublishedStudentCourses(request: AuthenticatedRequest, response: Response): Promise<void> {
+  const courses = await Course.find({ status: "published" })
+    .select("title description learnerCategory level industry goal modules teacherId createdAt")
+    .populate("teacherId", "name")
+    .sort({ createdAt: -1 })
+    .lean();
+  response.json({ data: { courses } });
+}
