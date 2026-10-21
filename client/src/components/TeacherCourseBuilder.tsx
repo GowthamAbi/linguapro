@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { FormEvent } from "react";
 import { BookOpen, Plus, Send, Save, PencilLine } from "lucide-react";
 
 type PracticeType = "reading" | "speaking" | "listening" | "quiz" | "roleplay";
@@ -70,8 +71,8 @@ export default function TeacherCourseBuilder({ apiBase }: Props) {
       ...m, lessons: m.lessons.map((l, li) => li === lessonIndex ? { ...l, ...patch } : l),
     }));
   }
-  async function saveCourse(event: React.FormEvent<HTMLFormElement>, status: "draft" | "published") {
-    event.preventDefault(); setLoading(true); setError(""); setStatusMessage("");
+  async function saveCourse(event: FormEvent<HTMLFormElement> | undefined, status: "draft" | "published") {
+    event?.preventDefault(); setLoading(true); setError(""); setStatusMessage("");
     const cleanModules = modules.filter((m) => m.title.trim()).map((m) => ({
       title: m.title.trim(),
       lessons: m.lessons.filter((l) => l.title.trim()).map((l) => ({ ...l, title: l.title.trim() })),
@@ -117,7 +118,7 @@ export default function TeacherCourseBuilder({ apiBase }: Props) {
           <button type="button" className="button button-outline" onClick={() => updateModule(mi, { lessons: [...module.lessons, emptyLesson()] })}><Plus size={15} /> Add lesson</button>
         </section>)}
         {error && <div className="inline-message">{error}</div>}{statusMessage && <div className="inline-message">{statusMessage}</div>}
-        <div className="practice-controls"><button className="button button-outline" type="submit" disabled={loading}><Save size={16} /> {loading ? "Saving…" : "Save draft"}</button><button className="button button-primary" type="button" disabled={loading} onClick={(event) => { const form = event.currentTarget.form; if (form?.reportValidity()) void saveCourse({ preventDefault: () => undefined } as React.FormEvent<HTMLFormElement>, "published"); }}><Send size={16} /> Publish course</button>{editingId && <button className="button button-outline" type="button" onClick={resetForm}>Cancel edit</button>}</div>
+        <div className="practice-controls"><button className="button button-outline" type="submit" disabled={loading}><Save size={16} /> {loading ? "Saving…" : "Save draft"}</button><button className="button button-primary" type="button" disabled={loading} onClick={(event) => { const form = event.currentTarget.form; if (form?.reportValidity()) void saveCourse(undefined, "published"); }}><Send size={16} /> Publish course</button>{editingId && <button className="button button-outline" type="button" onClick={resetForm}>Cancel edit</button>}</div>
       </form>
     </section>
     <section className="surface-card owner-table-card">
