@@ -51,10 +51,10 @@ export default function StudentCourseLibrary({ apiBase }: { apiBase: string }) {
       const response = await fetch(apiBase + "/student-courses/" + courseId + "/lessons/" + lessonId + "/complete", {
         method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
       });
-      const payload = await response.json() as { message?: string; data?: { completedLessonIds: string[]; courseCompleted: boolean } };
+      const payload = await response.json() as { message?: string; data?: { completedLessonIds: string[]; courseCompleted: boolean; xpEarned?: number; totalXp?: number } };
       if (!response.ok) throw new Error(payload.message ?? "Could not save lesson progress.");
       setProgress((old) => ({ ...old, [courseId]: payload.data?.completedLessonIds ?? [...(old[courseId] ?? []), lessonId] }));
-      setProgressMessage(payload.data?.courseCompleted ? "🎉 Course completed! Excellent work." : "Lesson completed — your progress is saved.");
+      setProgressMessage(payload.data?.courseCompleted ? "🎉 Course completed! Excellent work. +" + (payload.data?.xpEarned ?? 0) + " XP" : "Lesson completed! +" + (payload.data?.xpEarned ?? 0) + " XP. Progress saved.");
     } catch (err) {
       setProgressMessage(err instanceof Error ? err.message : "Could not save lesson progress.");
     }
