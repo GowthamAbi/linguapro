@@ -7,6 +7,7 @@ import authRoutes from "./routes/authRoutes";
 import adminRoutes from "./routes/adminRoutes";
 import profileRoutes from "./routes/profileRoutes";
 import progressRoutes from "./routes/progressRoutes";
+import speakingRoutes from "./routes/speakingRoutes";
 
 const app = express();
 const allowedOrigins = (process.env.CLIENT_ORIGIN ?? "http://localhost:5173")
@@ -44,6 +45,7 @@ app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/progress", progressRoutes);
+app.use("/api/speaking", speakingRoutes);
 app.use((_request, response) => response.status(404).json({ message: "API route not found." }));
 
 const errorHandler: ErrorRequestHandler = (error, _request, response, _next) => {
