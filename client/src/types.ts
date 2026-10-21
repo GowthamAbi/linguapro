@@ -1,0 +1,27 @@
+export type Page = "dashboard" | "courses" | "speaking" | "vocabulary" | "progress" | "profile" | "plans";
+export type LearningLevel = "Basic" | "Intermediate" | "Advanced";
+
+export interface UserProfile {
+  name: string;
+  email: string;
+  nativeLanguage: string;
+  targetLanguage: string;
+  level: LearningLevel;
+  plan: "Free" | "Premium";
+}
+
+export interface LearningTask {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  xp: number;
+  duration: string;
+  completed: boolean;
+}
+
+export interface LearningPhrase {
+  phrase: string;
+  meaning: string;
+  example: string;
+}
