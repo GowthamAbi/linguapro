@@ -116,7 +116,7 @@ function App() {
   }
 
   async function completeTask(id: string) {
-    if (tasks.some((task) => task.id === id && task.completed) || serverCompletedIds.includes(id)) {
+    if (authenticated ? serverCompletedIds.includes(id) : tasks.some((task) => task.id === id && task.completed)) {
       setMessage("You have already completed this task today.");
       return;
     }
