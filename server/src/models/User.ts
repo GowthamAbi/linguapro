@@ -8,6 +8,7 @@ export interface UserFields {
   targetLanguage: string;
   level: string;
   plan: string;
+  role: "student" | "teacher";
   totalXp: number;
   currentStreak: number;
   lastActiveDate: string;
@@ -22,6 +23,7 @@ const userSchema = new Schema<UserFields>(
     targetLanguage: { type: String, default: "English", enum: ["Tamil", "English", "Malayalam", "Hindi", "Kannada", "Telugu"] },
     level: { type: String, default: "Basic", enum: ["Basic", "Intermediate", "Advanced"] },
     plan: { type: String, default: "Free", enum: ["Free", "Premium"] },
+    role: { type: String, default: "student", enum: ["student", "teacher"], lowercase: true },
     totalXp: { type: Number, default: 0, min: 0 },
     currentStreak: { type: Number, default: 0, min: 0 },
     lastActiveDate: { type: String, default: "" },
