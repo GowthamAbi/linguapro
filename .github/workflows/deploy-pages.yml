@@ -1,8 +1,11 @@
-name: Deploy LinguaPro to GitHub Pages
+name: Build and deploy LinguaPro React app
 
 on:
   push:
     branches: [main]
+    paths:
+      - "client/**"
+      - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
 
 permissions:
@@ -18,14 +21,32 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Configure Pages
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: client/package.json
+
+      - name: Install frontend dependencies
+        working-directory: client
+        run: npm install
+
+      - name: Build React and TypeScript app
+        working-directory: client
+        run: npm run build
+
+      - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
-      - name: Upload website files
+
+      - name: Upload compiled website
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: client/dist
+
   deploy:
     environment:
       name: github-pages
