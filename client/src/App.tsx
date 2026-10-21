@@ -56,6 +56,8 @@ function App() {
     } catch { return defaultTasks; }
   });
   const [phraseIndex, setPhraseIndex] = useState(0);
+  const [isListening, setIsListening] = useState(false);
+  const [sessionComplete, setSessionComplete] = useState(false);
   const [message, setMessage] = useState("");
   const [authMode, setAuthMode] = useState<"login" | "register" | null>(null);
   const [authName, setAuthName] = useState("");
@@ -186,6 +188,7 @@ function App() {
   }
 
   function recordSpeech() {
+    if (isListening || sessionComplete) return;
     type RecognitionResult = { results: ArrayLike<ArrayLike<{ transcript: string }>> };
     type RecognitionError = { error?: string };
     type Recognition = {
@@ -207,6 +210,7 @@ function App() {
     const recognition = new RecognitionAPI();
     recognition.lang = profile.targetLanguage === "Hindi" ? "hi-IN" : profile.targetLanguage === "Malayalam" ? "ml-IN" : profile.targetLanguage === "Kannada" ? "kn-IN" : profile.targetLanguage === "Telugu" ? "te-IN" : "en-IN";
     recognition.interimResults = false;
+    let handledResult = false;
 
     const speakFeedback = (text: string, onFinished: () => void) => {
       if (!("speechSynthesis" in window)) {
@@ -223,6 +227,9 @@ function App() {
     };
 
     recognition.onresult = (event) => {
+      if (handledResult) return;
+      handledResult = true;
+      setIsListening(false);
       const spoken = (event.results[0]?.[0]?.transcript ?? "").trim();
       const normalize = (value: string) => value.toLocaleLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim();
       const expectedWords = normalize(phrase.phrase).split(" ").filter(Boolean);
@@ -239,6 +246,7 @@ function App() {
           setPhraseIndex((current) => Math.min(current + 1, phrases.length - 1));
           setMessage("Next phrase. Listen and speak when you are ready.");
         } else {
+          setSessionComplete(true);
           setMessage("All 5 phrases completed! Saving your speaking XP…");
           void completeTask("speak");
         }
@@ -258,6 +266,7 @@ function App() {
       }
     };
     recognition.onerror = (event) => {
+      setIsListening(false);
       const feedback = event.error === "not-allowed"
         ? "Microphone permission is blocked. Allow microphone access in your browser settings."
         : "I could not hear that clearly. Please try speaking again.";
@@ -271,6 +280,7 @@ function App() {
     };
     try {
       recognition.start();
+      setIsListening(true);
       setMessage("Listening… say the phrase now.");
     } catch {
       setMessage("Microphone is already active. Please wait and try again.");
@@ -403,7 +413,7 @@ function App() {
 
           {page === "speaking" && <>
             <PageTitle eyebrow="SPEAK WITH CONFIDENCE" title="Speaking practice" subtitle="Listen to a phrase, say it aloud, and practise real-life conversations." />
-            <section className="surface-card speaking-card"><div className="speaking-top"><span className="tag">{profile.targetLanguage.toUpperCase()} · {profile.level.toUpperCase()}</span><span className="muted-small">Phrase {phraseIndex + 1} of {phrases.length}</span></div><div className="phrase-mark">“</div><h2 className="practice-phrase">{phrase.phrase}</h2><p className="phrase-meaning">{phrase.meaning}</p><div className="example-box"><span>EXAMPLE</span><p>{phrase.example}</p></div><div className="practice-controls"><button className="button button-primary" onClick={playPhrase}><Volume2 size={17} /> Listen to phrase</button><button className="button button-outline" onClick={recordSpeech}><Mic size={17} /> Try speaking</button><button className="button button-outline" onClick={() => { setPhraseIndex((phraseIndex + 1) % phrases.length); setMessage(""); }}><ChevronRight size={17} /> Next phrase</button></div><p className="notice">Microphone recognition depends on browser support and permission. This demo does not save voice recordings.</p>{message && <div className="inline-message">{message}</div>}</section>
+            <section className="surface-card speaking-card"><div className="speaking-top"><span className="tag">{profile.targetLanguage.toUpperCase()} · {profile.level.toUpperCase()}</span><span className="muted-small">Phrase {phraseIndex + 1} of {phrases.length}</span></div><div className="phrase-mark">“</div><h2 className="practice-phrase">{phrase.phrase}</h2><p className="phrase-meaning">{phrase.meaning}</p><div className="example-box"><span>EXAMPLE</span><p>{phrase.example}</p></div><div className="practice-controls"><button className="button button-primary" onClick={playPhrase} disabled={isListening}><Volume2 size={17} /> Listen to phrase</button><button className="button button-outline" onClick={recordSpeech} disabled={isListening || sessionComplete}><Mic size={17} /> {isListening ? "Listening…" : "Try speaking"}</button><button className="button button-outline" onClick={() => { setPhraseIndex((current) => Math.min(current + 1, phrases.length - 1)); setMessage(""); }} disabled={isListening || sessionComplete || phraseIndex === phrases.length - 1}><ChevronRight size={17} /> Next phrase</button></div><p className="notice">Microphone recognition depends on browser support and permission. Voice is processed by your browser; LinguaPro does not store voice recordings.</p>{sessionComplete && <div className="inline-message"><strong>Practice complete!</strong> You finished all {phrases.length} phrases. {authenticated ? "Your speaking task XP is being saved to your account." : "Sign in to save XP to your account."}<div className="practice-controls"><button className="button button-primary" onClick={() => { setPhraseIndex(0); setSessionComplete(false); setMessage("New practice started. Listen to the first phrase."); }}>Practise again</button></div></div>}{message && <div className="inline-message">{message}</div>}</section>
           </>}
 
           {page === "vocabulary" && <>
