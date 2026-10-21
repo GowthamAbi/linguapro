@@ -159,10 +159,13 @@ function App() {
 
   function recordSpeech() {
     type RecognitionResult = { results: ArrayLike<ArrayLike<{ transcript: string }>> };
+    type RecognitionError = { error?: string };
     type Recognition = {
       lang: string;
+      interimResults?: boolean;
       onresult: ((event: RecognitionResult) => void) | null;
-      onerror: (() => void) | null;
+      onerror: ((event: RecognitionError) => void) | null;
+      onend?: (() => void) | null;
       start: () => void;
     };
     const browser = window as Window & {
@@ -171,15 +174,44 @@ function App() {
     };
     const RecognitionAPI = browser.SpeechRecognition ?? browser.webkitSpeechRecognition;
     if (!RecognitionAPI) {
-      setMessage("Speech recognition is not supported here. Read the phrase aloud and compare it yourself.");
+      setMessage("Speech recognition is not supported in this browser. Try Chrome and allow microphone access.");
       return;
     }
     const recognition = new RecognitionAPI();
-    recognition.lang = "en-IN";
-    recognition.onresult = (event) => setMessage("I heard: “" + event.results[0][0].transcript + "”. Compare it with the phrase above.");
-    recognition.onerror = () => setMessage("Microphone access failed. Check browser permission and try again.");
-    recognition.start();
-    setMessage("Listening… say the phrase now.");
+    recognition.lang = profile.targetLanguage === "Hindi" ? "hi-IN" : profile.targetLanguage === "Malayalam" ? "ml-IN" : profile.targetLanguage === "Kannada" ? "kn-IN" : profile.targetLanguage === "Telugu" ? "te-IN" : "en-IN";
+    recognition.interimResults = false;
+    recognition.onresult = (event) => {
+      const spoken = (event.results[0]?.[0]?.transcript ?? "").trim();
+      const normalize = (value: string) => value.toLocaleLowerCase().replace(/[^\\p{L}\\p{N}\\s]/gu, " ").replace(/\\s+/g, " ").trim();
+      const expectedWords = normalize(phrase.phrase).split(" ").filter(Boolean);
+      const spokenWords = normalize(spoken).split(" ").filter(Boolean);
+      const matches = spokenWords.filter((word) => expectedWords.includes(word)).length;
+      const accuracy = expectedWords.length ? matches / expectedWords.length : 0;
+      if (accuracy >= 0.75 && spokenWords.length >= Math.max(2, Math.ceil(expectedWords.length * 0.65))) {
+        setMessage("Correct! I heard: “" + spoken + "”. Moving to the next phrase…");
+        window.setTimeout(() => {
+          if (phraseIndex < phrases.length - 1) {
+            setPhraseIndex((current) => current + 1);
+            setMessage("Great pronunciation! Keep going.");
+          } else {
+            setMessage("All 5 phrases completed! Saving your speaking XP…");
+            void completeTask("speak");
+          }
+        }, 1200);
+      } else {
+        setMessage("I heard: “" + spoken + "”. Try again. Aim to say: “" + phrase.phrase + "”");
+      }
+    };
+    recognition.onerror = (event) => {
+      setMessage(event.error === "not-allowed" ? "Microphone permission is blocked. Allow microphone access in your browser settings." : "Speech recognition failed. Please try again.");
+    };
+    recognition.onend = () => undefined;
+    try {
+      recognition.start();
+      setMessage("Listening… say the phrase now.");
+    } catch {
+      setMessage("Microphone is already active. Please wait and try again.");
+    }
   }
 
   async function submitAuth(event: FormEvent<HTMLFormElement>) {
