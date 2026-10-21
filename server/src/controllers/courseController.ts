@@ -114,3 +114,51 @@ export async function completeStudentLesson(request: AuthenticatedRequest, respo
     data: { completedLessonIds: enrollment.completedLessonIds, completedLessons: enrollment.completedLessonIds.length, totalLessons: lessonCount, courseCompleted: Boolean(enrollment.completedAt), xpEarned, totalXp: user?.totalXp ?? 0 },
   });
 }
+
+
+export async function getTeacherCourseProgress(request: AuthenticatedRequest, response: Response): Promise<void> {
+  const courses = await Course.find({ teacherId: request.userId })
+    .select("title status modules")
+    .lean();
+  const courseIds = courses.map((course) => course._id);
+  const { CourseEnrollment } = await import("../models/CourseEnrollment");
+  const enrollments = await CourseEnrollment.find({ courseId: { $in: courseIds } })
+    .populate("studentId", "name email level")
+    .populate("courseId", "title modules status")
+    .sort({ updatedAt: -1 })
+    .lean();
+  const courseMap = new Map(courses.map((course) => [String(course._id), course]));
+  const rows = enrollments.map((enrollment) => {
+    const courseId = String(enrollment.courseId && typeof enrollment.courseId === "object" && "_id" in enrollment.courseId ? enrollment.courseId._id : enrollment.courseId);
+    const course = courseMap.get(courseId);
+    const totalLessons = course ? course.modules.reduce((sum, module) => sum + module.lessons.length, 0) : 0;
+    const student = enrollment.studentId && typeof enrollment.studentId === "object" && "name" in enrollment.studentId
+      ? enrollment.studentId as { _id: unknown; name: string; email: string; level?: string }
+      : null;
+    return {
+      courseId,
+      courseTitle: course?.title ?? "Course",
+      studentId: student ? String(student._id) : "",
+      studentName: student?.name ?? "Student",
+      studentEmail: student?.email ?? "",
+      studentLevel: student?.level ?? "",
+      completedLessons: enrollment.completedLessonIds.length,
+      totalLessons,
+      completionPercent: totalLessons ? Math.min(100, Math.round(enrollment.completedLessonIds.length / totalLessons * 100)) : 0,
+      courseCompleted: Boolean(enrollment.completedAt),
+      completedAt: enrollment.completedAt,
+      lastActivity: enrollment.updatedAt,
+    };
+  });
+  response.json({
+    data: {
+      summary: {
+        courses: courses.length,
+        learners: new Set(rows.map((row) => row.studentId).filter(Boolean)).size,
+        enrollments: rows.length,
+        completedCourses: rows.filter((row) => row.courseCompleted).length,
+      },
+      rows,
+    },
+  });
+}
