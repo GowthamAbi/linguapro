@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   AudioLines, BookOpen, Check, ChevronRight, CircleUserRound, Crown,
   Flame, GraduationCap, Languages, LayoutDashboard, LockKeyhole, LogIn,
-  Menu, Mic, Settings, Sparkles, Star, Target, TrendingUp, Volume2, X, Users, ShieldCheck, UserRound, Activity,
+  Menu, Mic, Settings, Sparkles, Star, Target, TrendingUp, Volume2, X, Users, ShieldCheck, UserRound,
 } from "lucide-react";
 import type { FormEvent, ReactNode } from "react";
 import type { LearningLevel, LearningPhrase, LearningTask, Page, UserProfile } from "./types";
