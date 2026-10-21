@@ -4,7 +4,7 @@ import {
   Flame, GraduationCap, Languages, LayoutDashboard, LockKeyhole, LogIn,
   Menu, Mic, Settings, Sparkles, Star, Target, TrendingUp, Volume2, X,
 } from "lucide-react";
-import type { FormEvent } from "react";
+import type { FormEvent, ReactNode } from "react";
 import type { LearningLevel, LearningPhrase, LearningTask, Page, UserProfile } from "./types";
 
 const phrases: LearningPhrase[] = [
@@ -261,7 +261,7 @@ function App() {
   );
 }
 
-function StatCard({ icon, label, value, detail }: { icon: React.ReactNode; label: string; value: string; detail: string }) {
+function StatCard({ icon, label, value, detail }: { icon: ReactNode; label: string; value: string; detail: string }) {
   return <article className="stat-card"><div className="stat-icon">{icon}</div><div><span>{label}</span><strong>{value}</strong><small>{detail}</small></div></article>;
 }
 
