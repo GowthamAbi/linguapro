@@ -500,6 +500,24 @@ function App() {
             </section>
           </>}
 
+          {page === ("assignments" as Page) && !authenticated && <section className="surface-card"><h3>Sign in to view assignments</h3><p>Your teacher will share assignments with your LinguaPro student account.</p><button className="button button-primary" onClick={() => setAuthMode("login")}>Sign in</button></section>}
+          {page === ("assignments" as Page) && authenticated && (isTeacher || isOwner) && <section className="surface-card"><h3>Student assignments</h3><p>This page is for student accounts. Open your workspace to manage teacher assignments.</p></section>}
+          {page === ("assignments" as Page) && authenticated && !isTeacher && !isOwner && <>
+            <PageTitle eyebrow="YOUR CLASSROOM" title="Assignments" subtitle="Complete tasks assigned by your teacher and read their feedback." />
+            <button className="button button-outline" onClick={() => void loadStudentAssignments()}>Refresh assignments</button>
+            {assignmentMessage && <div className="inline-message">{assignmentMessage}</div>}
+            {studentAssignments.map((assignment) => <section className="surface-card settings-card" key={assignment._id}>
+              <div className="card-heading"><div><h3>{assignment.title}</h3><p>Teacher: {assignment.teacherId?.name ?? "LinguaPro teacher"} · Due: {assignment.dueDate ? new Date(assignment.dueDate).toLocaleDateString() : "No due date"}</p></div><span className="tag">{assignment.mySubmission ? "SUBMITTED" : "TO DO"}</span></div>
+              <p>{assignment.description}</p>
+              <form className="form-grid" onSubmit={async (event) => { event.preventDefault(); try { const answer = assignmentAnswers[assignment._id] ?? assignment.mySubmission?.answer ?? ""; const response = await fetch(apiBase + "/assignments/student/assignments/" + assignment._id + "/submit", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ answer }) }); const payload = await response.json() as { message?: string }; if (!response.ok) throw new Error(payload.message ?? "Could not submit answer."); setAssignmentMessage(payload.message ?? "Answer submitted."); await loadStudentAssignments(); } catch (error) { setAssignmentMessage(error instanceof Error ? error.message : "Could not submit answer."); } }}>
+                <label>Your answer<textarea required minLength={1} maxLength={5000} rows={4} value={assignmentAnswers[assignment._id] ?? assignment.mySubmission?.answer ?? ""} onChange={(event) => setAssignmentAnswers((old) => ({ ...old, [assignment._id]: event.target.value }))} placeholder="Write your answer here..." /></label>
+                <button className="button button-primary"><Send size={16} /> {assignment.mySubmission ? "Update submission" : "Submit answer"}</button>
+              </form>
+              {assignment.mySubmission?.score !== undefined && <div className="inline-message"><strong>Score: {assignment.mySubmission.score}/100</strong>{assignment.mySubmission.feedback ? " — " + assignment.mySubmission.feedback : ""}</div>}
+              {assignment.mySubmission && assignment.mySubmission.score === undefined && assignment.mySubmission.feedback && <div className="inline-message">Teacher feedback: {assignment.mySubmission.feedback}</div>}
+            </section>)}
+            {!studentAssignments.length && !assignmentMessage && <section className="surface-card"><h3>No assignments yet</h3><p>Assignments from your teacher will appear here.</p></section>}
+          </>}
           {page === "courses" && <>
             <PageTitle eyebrow="YOUR LEARNING PATH" title="My learning" subtitle="A clear path from first words to confident conversations." />
             <div className="course-grid">{[
