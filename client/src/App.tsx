@@ -67,7 +67,7 @@ function App() {
   const [serverStreak, setServerStreak] = useState(0);
   const [serverCompletedIds, setServerCompletedIds] = useState<string[]>([]);
 
-  const apiBase = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\\/$/, "") ?? "";
+  const apiBase = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ?? "";
 
   async function loadServerProgress() {
     if (!apiBase) return;
