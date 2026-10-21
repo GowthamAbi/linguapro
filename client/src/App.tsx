@@ -165,7 +165,6 @@ function App() {
       interimResults?: boolean;
       onresult: ((event: RecognitionResult) => void) | null;
       onerror: ((event: RecognitionError) => void) | null;
-      onend?: (() => void) | null;
       start: () => void;
     };
     const browser = window as Window & {
@@ -180,32 +179,66 @@ function App() {
     const recognition = new RecognitionAPI();
     recognition.lang = profile.targetLanguage === "Hindi" ? "hi-IN" : profile.targetLanguage === "Malayalam" ? "ml-IN" : profile.targetLanguage === "Kannada" ? "kn-IN" : profile.targetLanguage === "Telugu" ? "te-IN" : "en-IN";
     recognition.interimResults = false;
+
+    const speakFeedback = (text: string, onFinished: () => void) => {
+      if (!("speechSynthesis" in window)) {
+        window.setTimeout(onFinished, 2500);
+        return;
+      }
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = profile.targetLanguage === "Hindi" ? "hi-IN" : profile.targetLanguage === "Malayalam" ? "ml-IN" : profile.targetLanguage === "Kannada" ? "kn-IN" : profile.targetLanguage === "Telugu" ? "te-IN" : "en-IN";
+      utterance.rate = 0.9;
+      utterance.onend = onFinished;
+      utterance.onerror = onFinished;
+      window.speechSynthesis.speak(utterance);
+    };
+
     recognition.onresult = (event) => {
       const spoken = (event.results[0]?.[0]?.transcript ?? "").trim();
-      const normalize = (value: string) => value.toLocaleLowerCase().replace(/[^\\p{L}\\p{N}\\s]/gu, " ").replace(/\\s+/g, " ").trim();
+      const normalize = (value: string) => value.toLocaleLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim();
       const expectedWords = normalize(phrase.phrase).split(" ").filter(Boolean);
       const spokenWords = normalize(spoken).split(" ").filter(Boolean);
+      const missingWords = expectedWords.filter((word) => !spokenWords.includes(word));
+      const extraWords = spokenWords.filter((word) => !expectedWords.includes(word));
       const matches = spokenWords.filter((word) => expectedWords.includes(word)).length;
       const accuracy = expectedWords.length ? matches / expectedWords.length : 0;
-      if (accuracy >= 0.75 && spokenWords.length >= Math.max(2, Math.ceil(expectedWords.length * 0.65))) {
-        setMessage("Correct! I heard: “" + spoken + "”. Moving to the next phrase…");
-        window.setTimeout(() => {
-          if (phraseIndex < phrases.length - 1) {
-            setPhraseIndex((current) => current + 1);
-            setMessage("Great pronunciation! Keep going.");
-          } else {
-            setMessage("All 5 phrases completed! Saving your speaking XP…");
-            void completeTask("speak");
-          }
-        }, 1200);
+      const correct = accuracy >= 0.75 && spokenWords.length >= Math.max(2, Math.ceil(expectedWords.length * 0.65));
+      const moveNext = () => {
+        if (phraseIndex < phrases.length - 1) {
+          setPhraseIndex((current) => Math.min(current + 1, phrases.length - 1));
+          setMessage("Next phrase. Listen and speak when you are ready.");
+        } else {
+          setMessage("All 5 phrases completed! Saving your speaking XP…");
+          void completeTask("speak");
+        }
+      };
+
+      if (correct) {
+        setMessage("Correct! I heard: “" + spoken + "”. I'll say the next phrase now.");
+        speakFeedback("Correct. Well done. Next phrase.", moveNext);
       } else {
-        setMessage("I heard: “" + spoken + "”. Try again. Aim to say: “" + phrase.phrase + "”");
+        const mistakeParts: string[] = [];
+        if (missingWords.length) mistakeParts.push("You missed these words: " + missingWords.join(", ") + ".");
+        if (extraWords.length) mistakeParts.push("These words did not match: " + extraWords.join(", ") + ".");
+        if (!missingWords.length && !extraWords.length) mistakeParts.push("Please speak a little more clearly.");
+        const feedback = "I heard: " + (spoken || "no speech detected") + ". " + mistakeParts.join(" ") + " The correct sentence is: " + phrase.phrase + ". Moving to the next phrase.";
+        setMessage(feedback);
+        speakFeedback(feedback, moveNext);
       }
     };
     recognition.onerror = (event) => {
-      setMessage(event.error === "not-allowed" ? "Microphone permission is blocked. Allow microphone access in your browser settings." : "Speech recognition failed. Please try again.");
+      const feedback = event.error === "not-allowed"
+        ? "Microphone permission is blocked. Allow microphone access in your browser settings."
+        : "I could not hear that clearly. Please try speaking again.";
+      setMessage(feedback);
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(feedback);
+        utterance.lang = "en-IN";
+        window.speechSynthesis.speak(utterance);
+      }
     };
-    recognition.onend = () => undefined;
     try {
       recognition.start();
       setMessage("Listening… say the phrase now.");
