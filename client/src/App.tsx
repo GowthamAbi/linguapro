@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import {
   AudioLines, BookOpen, Check, ChevronRight, CircleUserRound, Crown,
   Flame, GraduationCap, Languages, LayoutDashboard, LockKeyhole, LogIn,
-  Menu, Mic, Settings, Sparkles, Star, Target, TrendingUp, Volume2, X,
+  Menu, Mic, Settings, Sparkles, Star, Target, TrendingUp, Volume2, X, Users, ShieldCheck, UserRound, Activity,
 } from "lucide-react";
 import type { FormEvent, ReactNode } from "react";
 import type { LearningLevel, LearningPhrase, LearningTask, Page, UserProfile } from "./types";
@@ -68,6 +68,34 @@ function App() {
   const [serverCompletedIds, setServerCompletedIds] = useState<string[]>([]);
 
   const apiBase = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ?? "";
+  const ownerEmail = (import.meta.env.VITE_OWNER_EMAIL as string | undefined)?.trim().toLowerCase() ?? "";
+  const isOwner = authenticated && !!ownerEmail && profile.email.trim().toLowerCase() === ownerEmail;
+  const [ownerSection, setOwnerSection] = useState<"overview" | "users" | "students">("overview");
+  const [ownerStats, setOwnerStats] = useState<{ totalUsers: number; premiumUsers: number; freeUsers: number; activeLearners: number; totalXp: number } | null>(null);
+  const [ownerUsers, setOwnerUsers] = useState<Array<{ _id: string; name: string; email: string; plan: string; targetLanguage: string; level: string; totalXp: number; currentStreak: number; createdAt: string }>>([]);
+  const [ownerLoading, setOwnerLoading] = useState(false);
+  const [ownerError, setOwnerError] = useState("");
+
+  async function loadOwnerData(section: "overview" | "users" | "students" = ownerSection) {
+    if (!apiBase || !isOwner) return;
+    setOwnerLoading(true); setOwnerError("");
+    try {
+      if (section === "overview") {
+        const response = await fetch(apiBase + "/admin/overview", { credentials: "include" });
+        const payload = await response.json() as { message?: string; data?: { totalUsers: number; premiumUsers: number; freeUsers: number; activeLearners: number; totalXp: number } };
+        if (!response.ok || !payload.data) throw new Error(payload.message ?? "Could not load owner overview.");
+        setOwnerStats(payload.data);
+      } else {
+        const response = await fetch(apiBase + "/admin/users?type=" + section, { credentials: "include" });
+        const payload = await response.json() as { message?: string; data?: { users: typeof ownerUsers } };
+        if (!response.ok || !payload.data) throw new Error(payload.message ?? "Could not load accounts.");
+        setOwnerUsers(payload.data.users);
+      }
+    } catch (error) { setOwnerError(error instanceof Error ? error.message : "Owner dashboard could not load."); }
+    finally { setOwnerLoading(false); }
+  }
+
+  useEffect(() => { if (isOwner) void loadOwnerData("overview"); }, [isOwner, apiBase]);
 
   async function loadServerProgress() {
     if (!apiBase) return;
@@ -289,7 +317,7 @@ function App() {
         <button className="icon-button mobile-menu-button" aria-label="Open menu" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X /> : <Menu />}</button>
         <button className="brand" onClick={() => navigate("dashboard")}><span className="brand-mark">◈</span> Lingua<span className="brand-accent">Pro</span></button>
         <div className="topbar-right">
-          <button className="plan-chip" onClick={() => navigate("plans")}><Sparkles size={14} /> {profile.plan.toUpperCase()} PLAN</button>
+          {isOwner && <button className="plan-chip owner-chip" onClick={() => { setOwnerSection("overview"); void loadOwnerData("overview"); navigate("owner" as Page); }}><ShieldCheck size={14} /> OWNER</button>}<button className="plan-chip" onClick={() => navigate("plans")}><Sparkles size={14} /> {profile.plan.toUpperCase()} PLAN</button>
           <button className="avatar-button" onClick={() => navigate("profile")} aria-label="Profile"><CircleUserRound size={20} /></button>
           <button className="text-button" onClick={() => { setAuthMode("login"); setMessage(""); }}><LogIn size={16} /> Sign in</button>
         </div>
@@ -315,6 +343,33 @@ function App() {
         </aside>
 
         <main className="page-content">
+          {page === ("owner" as Page) && isOwner && <>
+            <PageTitle eyebrow="LINGUAPRO ADMINISTRATION" title="Owner dashboard" subtitle="Manage registered accounts and active learning customers separately." />
+            <div className="owner-tabs">
+              <button className={ownerSection === "overview" ? "owner-tab active" : "owner-tab"} onClick={() => { setOwnerSection("overview"); void loadOwnerData("overview"); }}><LayoutDashboard size={16} /> Overview</button>
+              <button className={ownerSection === "users" ? "owner-tab active" : "owner-tab"} onClick={() => { setOwnerSection("users"); void loadOwnerData("users"); }}><Users size={16} /> All users</button>
+              <button className={ownerSection === "students" ? "owner-tab active" : "owner-tab"} onClick={() => { setOwnerSection("students"); void loadOwnerData("students"); }}><GraduationCap size={16} /> Students / customers</button>
+            </div>
+            {ownerLoading && <div className="inline-message">Loading owner data…</div>}
+            {ownerError && <div className="inline-message">{ownerError}</div>}
+            {ownerSection === "overview" && ownerStats && <div className="owner-stats-grid">
+              <StatCard icon={<Users />} label="Total registered users" value={String(ownerStats.totalUsers)} detail="All accounts" />
+              <StatCard icon={<GraduationCap />} label="Active learners" value={String(ownerStats.activeLearners)} detail="Users with earned XP" />
+              <StatCard icon={<Crown />} label="Premium users" value={String(ownerStats.premiumUsers)} detail="Premium plan accounts" />
+              <StatCard icon={<UserRound />} label="Free users" value={String(ownerStats.freeUsers)} detail="Free plan accounts" />
+              <StatCard icon={<Star />} label="Total XP earned" value={String(ownerStats.totalXp)} detail="Across all users" />
+              <button className="owner-jump-card" onClick={() => { setOwnerSection("users"); void loadOwnerData("users"); }}><Users /><strong>Manage all users</strong><span>View every registered account</span><ChevronRight /></button>
+              <button className="owner-jump-card" onClick={() => { setOwnerSection("students"); void loadOwnerData("students"); }}><GraduationCap /><strong>Student / customer list</strong><span>Users who have started learning</span><ChevronRight /></button>
+            </div>}
+            {(ownerSection === "users" || ownerSection === "students") && <section className="surface-card owner-table-card">
+              <div className="card-heading"><div><h3>{ownerSection === "users" ? "All registered users" : "Students / customers"}</h3><p>{ownerSection === "users" ? "Every account registered in LinguaPro." : "Accounts with learning XP recorded."}</p></div><button className="button button-outline" onClick={() => void loadOwnerData(ownerSection)}>Refresh</button></div>
+              <div className="owner-table-wrap"><table className="owner-table"><thead><tr><th>Name</th><th>Email</th><th>Plan</th><th>Language</th><th>Level</th><th>XP</th><th>Joined</th></tr></thead><tbody>
+                {ownerUsers.map((user) => <tr key={user._id}><td>{user.name}</td><td>{user.email}</td><td><span className={user.plan === "Premium" ? "owner-plan premium" : "owner-plan"}>{user.plan}</span></td><td>{user.targetLanguage}</td><td>{user.level}</td><td>{user.totalXp ?? 0}</td><td>{user.createdAt ? new Date(user.createdAt).toLocaleDateString() : "—"}</td></tr>)}
+                {!ownerUsers.length && !ownerLoading && <tr><td colSpan={7}>No accounts found in this section yet.</td></tr>}
+              </tbody></table></div>
+            </section>}
+          </>}
+          {page === ("owner" as Page) && !isOwner && <section className="surface-card"><h3>Owner access only</h3><p>Sign in using the owner account configured for this site.</p></section>}
           {page === "dashboard" && <>
             <div className="page-heading">
               <div><div className="eyebrow">YOUR LEARNING SPACE</div><h1>Keep going, {profile.name || "learner"}! 👋</h1><p>A little practice every day makes a big difference.</p></div>
