@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import "./styles-teacher-progress.css";
 import {
   AudioLines, BookOpen, Check, ChevronRight, CircleUserRound, Crown,
   Flame, GraduationCap, Languages, LayoutDashboard, LockKeyhole, LogIn,
