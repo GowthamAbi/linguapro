@@ -28,19 +28,37 @@ export default function StudentCourseLibrary({ apiBase }: { apiBase: string }) {
   const [expanded, setExpanded] = useState<string>("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState<Record<string, string[]>>({});
+  const [progressMessage, setProgressMessage] = useState("");
 
   async function loadCourses() {
     if (!apiBase) { setError("Course library needs the backend API. Set VITE_API_URL in Netlify."); return; }
     setLoading(true); setError("");
     try {
       const response = await fetch(apiBase + "/student-courses", { credentials: "include" });
-      const payload = await response.json() as { message?: string; data?: { courses: Course[] } };
+      const payload = await response.json() as { message?: string; data?: { courses: Course[]; progress?: Record<string, string[]> } };
       if (!response.ok) throw new Error(payload.message ?? "Could not load published courses.");
       setCourses(payload.data?.courses ?? []);
+      setProgress(payload.data?.progress ?? {});
     } catch (err) { setError(err instanceof Error ? err.message : "Could not load courses."); }
     finally { setLoading(false); }
   }
   useEffect(() => { void loadCourses(); }, [apiBase]);
+
+  async function completeLesson(courseId: string, lessonId: string) {
+    setProgressMessage("");
+    try {
+      const response = await fetch(apiBase + "/student-courses/" + courseId + "/lessons/" + lessonId + "/complete", {
+        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+      });
+      const payload = await response.json() as { message?: string; data?: { completedLessonIds: string[]; courseCompleted: boolean } };
+      if (!response.ok) throw new Error(payload.message ?? "Could not save lesson progress.");
+      setProgress((old) => ({ ...old, [courseId]: payload.data?.completedLessonIds ?? [...(old[courseId] ?? []), lessonId] }));
+      setProgressMessage(payload.data?.courseCompleted ? "🎉 Course completed! Excellent work." : "Lesson completed — your progress is saved.");
+    } catch (err) {
+      setProgressMessage(err instanceof Error ? err.message : "Could not save lesson progress.");
+    }
+  }
 
   const visibleCourses = useMemo(() => courses.filter((course) =>
     (category === "all" || course.learnerCategory === category) &&
@@ -58,6 +76,7 @@ export default function StudentCourseLibrary({ apiBase }: { apiBase: string }) {
     </div>
     {loading && <p className="inline-message">Loading courses…</p>}
     {error && <p className="inline-message">{error}</p>}
+    {progressMessage && <p className="inline-message">{progressMessage}</p>}
     {!loading && !error && visibleCourses.length === 0 && <div className="surface-card"><h3>No published courses yet</h3><p>When your teacher publishes a course, it will appear here.</p></div>}
     <div className="student-course-list">{visibleCourses.map((course) => {
       const isExpanded = expanded === course._id;
@@ -74,16 +93,24 @@ export default function StudentCourseLibrary({ apiBase }: { apiBase: string }) {
           </div>
           <button className="button button-outline" onClick={() => setExpanded(isExpanded ? "" : course._id)}>{isExpanded ? "Hide lessons" : "Open course"} {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</button>
         </div>
+        <div className="student-course-progress">
+          <div><strong>{(progress[course._id] ?? []).length}/{lessonCount} lessons completed</strong><span>{lessonCount ? Math.round(((progress[course._id] ?? []).length / lessonCount) * 100) : 0}%</span></div>
+          <div className="student-progress-track"><span style={{ width: (lessonCount ? Math.min(100, ((progress[course._id] ?? []).length / lessonCount) * 100) : 0) + "%" }} /></div>
+        </div>
         {isExpanded && <div className="student-course-lessons">
           {course.modules.length === 0 && <p>This course has no modules yet. Check back soon.</p>}
           {course.modules.map((module, moduleIndex) => <section className="student-module" key={module._id}>
             <h4><span>{moduleIndex + 1}</span>{module.title}</h4>
             {module.lessons.length === 0 && <p className="muted-small">Lessons will be added soon.</p>}
-            {module.lessons.map((lesson, lessonIndex) => <article className="student-lesson" key={lesson._id}>
-              <div className="student-lesson-heading"><strong>{moduleIndex + 1}.{lessonIndex + 1} {lesson.title}</strong><span className="tag">{practiceLabels[lesson.practiceType]}</span></div>
-              {lesson.content && <p>{lesson.content}</p>}
-              {lesson.tamilMeaning && <div className="student-tamil-meaning"><Languages size={16} /><div><strong>தமிழ் விளக்கம்</strong><p>{lesson.tamilMeaning}</p></div></div>}
-            </article>)}
+            {module.lessons.map((lesson, lessonIndex) => {
+              const isDone = (progress[course._id] ?? []).includes(lesson._id);
+              return <article className={"student-lesson " + (isDone ? "student-lesson-done" : "")} key={lesson._id}>
+                <div className="student-lesson-heading"><strong>{moduleIndex + 1}.{lessonIndex + 1} {lesson.title}</strong><span className="tag">{practiceLabels[lesson.practiceType]}</span></div>
+                {lesson.content && <p>{lesson.content}</p>}
+                {lesson.tamilMeaning && <div className="student-tamil-meaning"><Languages size={16} /><div><strong>தமிழ் விளக்கம்</strong><p>{lesson.tamilMeaning}</p></div></div>}
+                <button className={"button " + (isDone ? "button-outline" : "button-primary") + " student-lesson-complete"} disabled={isDone} onClick={() => void completeLesson(course._id, lesson._id)}>{isDone ? "✓ Completed" : "Mark lesson complete"}</button>
+              </article>;
+            })}
           </section>)}
         </div>}
       </article>;
