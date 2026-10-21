@@ -15,8 +15,8 @@ export async function overview(_request: AuthenticatedRequest, response: Respons
 
 export async function listUsers(request: AuthenticatedRequest, response: Response): Promise<void> {
   const studentsOnly = request.query.type === "students";
-  const filter = studentsOnly ? { totalXp: { $gt: 0 } } : {};
-  const users = await User.find(filter).sort({ createdAt: -1 }).select("name email plan targetLanguage level totalXp currentStreak createdAt lastActiveDate").limit(500).lean();
+  const filter = studentsOnly ? { totalXp: { $gt: 0 }, $or: [{ role: "student" }, { role: { $exists: false } }] } : {};
+  const users = await User.find(filter).sort({ createdAt: -1 }).select("name email role plan targetLanguage level totalXp currentStreak createdAt lastActiveDate").limit(500).lean();
   response.json({ data: { users } });
 }
 
