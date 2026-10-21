@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BookOpen, ChevronDown, ChevronRight, GraduationCap, Languages, RefreshCw } from "lucide-react";
+import { BookOpen, ChevronDown, ChevronRight, Languages, RefreshCw } from "lucide-react";
 
 type Lesson = { _id: string; title: string; content?: string; tamilMeaning?: string; practiceType: "reading" | "speaking" | "listening" | "quiz" | "roleplay" };
 type Module = { _id: string; title: string; lessons: Lesson[] };
