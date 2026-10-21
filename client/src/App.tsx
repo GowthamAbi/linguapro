@@ -24,7 +24,7 @@ const defaultTasks: LearningTask[] = [
 
 const defaultProfile: UserProfile = {
   name: "Learner", email: "", nativeLanguage: "Tamil",
-  targetLanguage: "English", level: "Basic", plan: "Free",
+  targetLanguage: "English", level: "Basic", plan: "Free", role: "student",
 };
 
 const navItems: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [
@@ -72,13 +72,19 @@ function App() {
   const apiBase = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ?? "";
   const ownerEmail = (import.meta.env.VITE_OWNER_EMAIL as string | undefined)?.trim().toLowerCase() ?? "";
   const isOwner = authenticated && !!ownerEmail && profile.email.trim().toLowerCase() === ownerEmail;
-  const [ownerSection, setOwnerSection] = useState<"overview" | "users" | "students">("overview");
+  const isTeacher = authenticated && profile.role === "teacher" && !isOwner;
+  const [ownerSection, setOwnerSection] = useState<"overview" | "users" | "students" | "teachers">("overview");
   const [ownerStats, setOwnerStats] = useState<{ totalUsers: number; premiumUsers: number; freeUsers: number; activeLearners: number; totalXp: number } | null>(null);
   const [ownerUsers, setOwnerUsers] = useState<Array<{ _id: string; name: string; email: string; plan: string; targetLanguage: string; level: string; totalXp: number; currentStreak: number; createdAt: string }>>([]);
   const [ownerLoading, setOwnerLoading] = useState(false);
+  const [teacherName, setTeacherName] = useState("");
+  const [teacherEmail, setTeacherEmail] = useState("");
+  const [teacherPassword, setTeacherPassword] = useState("");
+  const [teacherCreated, setTeacherCreated] = useState("");
+  const [teacherList, setTeacherList] = useState<Array<{ _id: string; name: string; email: string; plan: string; createdAt: string }>>([]);
   const [ownerError, setOwnerError] = useState("");
 
-  async function loadOwnerData(section: "overview" | "users" | "students" = ownerSection) {
+  async function loadOwnerData(section: "overview" | "users" | "students" | "teachers" = ownerSection) {
     if (!apiBase || !isOwner) return;
     setOwnerLoading(true); setOwnerError("");
     try {
@@ -87,6 +93,12 @@ function App() {
         const payload = await response.json() as { message?: string; data?: { totalUsers: number; premiumUsers: number; freeUsers: number; activeLearners: number; totalXp: number } };
         if (!response.ok || !payload.data) throw new Error(payload.message ?? "Could not load owner overview.");
         setOwnerStats(payload.data);
+      } else if (section === "teachers") {
+        // The teacher list is loaded when the teacher-management tab is opened.
+        const response = await fetch(apiBase + "/admin/teachers", { credentials: "include" });
+        const payload = await response.json() as { message?: string; data?: { teachers: Array<{ _id: string; name: string; email: string; plan: string; createdAt: string }> } };
+        if (!response.ok || !payload.data) throw new Error(payload.message ?? "Could not load teachers.");
+        setTeacherList(payload.data.teachers);
       } else {
         const response = await fetch(apiBase + "/admin/users?type=" + section, { credentials: "include" });
         const payload = await response.json() as { message?: string; data?: { users: typeof ownerUsers } };
@@ -118,11 +130,11 @@ function App() {
     fetch(apiBase + "/auth/me", { credentials: "include" })
       .then(async (response) => {
         if (!response.ok) return;
-        const payload = await response.json() as { data?: { user?: { name?: string; email?: string; nativeLanguage?: string; targetLanguage?: string; level?: LearningLevel; plan?: "Free" | "Premium" } } };
+        const payload = await response.json() as { data?: { user?: { name?: string; email?: string; nativeLanguage?: string; targetLanguage?: string; level?: LearningLevel; plan?: "Free" | "Premium"; role?: "student" | "teacher" } } };
         const user = payload.data?.user;
         if (user) {
           setAuthenticated(true);
-          setProfile((current) => ({ ...current, ...user }));
+          setProfile((current) => ({ ...current, ...user, role: user.role ?? "student" }));
           await loadServerProgress();
         }
       })
@@ -333,10 +345,11 @@ function App() {
           ? { name: authName, email: authEmail, password: authPassword }
           : { email: authEmail, password: authPassword }),
       });
-      const payload = await response.json() as { message?: string; data?: { user?: { name?: string; email?: string } } };
+      const payload = await response.json() as { message?: string; data?: { user?: { name?: string; email?: string; role?: "student" | "teacher" } } };
       if (!response.ok) throw new Error(payload.message ?? "Unable to sign in.");
       if (payload.data?.user?.name) saveProfile("name", payload.data.user.name);
       if (payload.data?.user?.email) saveProfile("email", payload.data.user.email);
+      if (payload.data?.user?.role) saveProfile("role", payload.data.user.role);
       setAuthenticated(true);
       await loadServerProgress();
       setAuthMode(null);
@@ -354,7 +367,7 @@ function App() {
         <button className="icon-button mobile-menu-button" aria-label="Open menu" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X /> : <Menu />}</button>
         <button className="brand" onClick={() => navigate("dashboard")}><span className="brand-mark">◈</span> Lingua<span className="brand-accent">Pro</span></button>
         <div className="topbar-right">
-          {isOwner && <button className="plan-chip owner-chip" onClick={() => { setOwnerSection("overview"); void loadOwnerData("overview"); navigate("owner" as Page); }}><ShieldCheck size={14} /> OWNER</button>}<button className="plan-chip" onClick={() => navigate("plans")}><Sparkles size={14} /> {profile.plan.toUpperCase()} PLAN</button>
+          {isOwner && <button className="plan-chip owner-chip" onClick={() => { setOwnerSection("overview"); void loadOwnerData("overview"); navigate("owner" as Page); }}><ShieldCheck size={14} /> OWNER</button>}{isTeacher && <button className="plan-chip owner-chip" onClick={() => navigate("teacher" as Page)}><GraduationCap size={14} /> TEACHER</button>}<button className="plan-chip" onClick={() => navigate("plans")}><Sparkles size={14} /> {profile.plan.toUpperCase()} PLAN</button>
           <button className="avatar-button" onClick={() => navigate("profile")} aria-label="Profile"><CircleUserRound size={20} /></button>
           <button className="text-button" onClick={() => { setAuthMode("login"); setMessage(""); }}><LogIn size={16} /> Sign in</button>
         </div>
@@ -380,12 +393,14 @@ function App() {
         </aside>
 
         <main className="page-content">
+          {page === ("teacher" as Page) && isTeacher && <><PageTitle eyebrow="TEACHER WORKSPACE" title={"Welcome, " + profile.name} subtitle="Your teaching portal is ready. Student assignments and progress tools can be managed here." /><div className="owner-stats-grid"><StatCard icon={<Users />} label="Student workspace" value="Ready" detail="Student roster tools are next" /><StatCard icon={<BookOpen />} label="Lessons" value="Plan" detail="Prepare lessons and exercises" /><StatCard icon={<TrendingUp />} label="Progress" value="Track" detail="Review learner performance" /></div><section className="surface-card"><h3>Teacher workspace</h3><p>Teacher access is enabled for this account. Next we can connect assigned students, lessons, assignments, and feedback to the backend.</p></section></>}
+          {page === ("teacher" as Page) && !isTeacher && <section className="surface-card"><h3>Teacher access only</h3><p>Sign in using a teacher account created by the owner.</p></section>}
           {page === ("owner" as Page) && isOwner && <>
             <PageTitle eyebrow="LINGUAPRO ADMINISTRATION" title="Owner dashboard" subtitle="Manage registered accounts and active learning customers separately." />
             <div className="owner-tabs">
               <button className={ownerSection === "overview" ? "owner-tab active" : "owner-tab"} onClick={() => { setOwnerSection("overview"); void loadOwnerData("overview"); }}><LayoutDashboard size={16} /> Overview</button>
               <button className={ownerSection === "users" ? "owner-tab active" : "owner-tab"} onClick={() => { setOwnerSection("users"); void loadOwnerData("users"); }}><Users size={16} /> All users</button>
-              <button className={ownerSection === "students" ? "owner-tab active" : "owner-tab"} onClick={() => { setOwnerSection("students"); void loadOwnerData("students"); }}><GraduationCap size={16} /> Students / customers</button>
+              <button className={ownerSection === "students" ? "owner-tab active" : "owner-tab"} onClick={() => { setOwnerSection("students"); void loadOwnerData("students"); }}><GraduationCap size={16} /> Students / customers</button><button className={ownerSection === "teachers" ? "owner-tab active" : "owner-tab"} onClick={() => { setOwnerSection("teachers"); void loadOwnerData("teachers"); }}><ShieldCheck size={16} /> Teachers</button>
             </div>
             {ownerLoading && <div className="inline-message">Loading owner data…</div>}
             {ownerError && <div className="inline-message">{ownerError}</div>}
@@ -398,6 +413,7 @@ function App() {
               <button className="owner-jump-card" onClick={() => { setOwnerSection("users"); void loadOwnerData("users"); }}><Users /><strong>Manage all users</strong><span>View every registered account</span><ChevronRight /></button>
               <button className="owner-jump-card" onClick={() => { setOwnerSection("students"); void loadOwnerData("students"); }}><GraduationCap /><strong>Student / customer list</strong><span>Users who have started learning</span><ChevronRight /></button>
             </div>}
+            {ownerSection === "teachers" && <section className="surface-card owner-table-card"><div className="card-heading"><div><h3>Create teacher account</h3><p>Only the owner can create teacher accounts. Share the temporary password securely.</p></div></div><form className="form-grid" onSubmit={async (event) => { event.preventDefault(); setTeacherCreated(""); setOwnerError(""); try { const response = await fetch(apiBase + "/admin/teachers", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: teacherName, email: teacherEmail, password: teacherPassword }) }); const payload = await response.json() as { message?: string }; if (!response.ok) throw new Error(payload.message ?? "Could not create teacher."); setTeacherCreated(payload.message ?? "Teacher account created."); setTeacherName(""); setTeacherEmail(""); setTeacherPassword(""); await loadOwnerData("teachers"); } catch (error) { setOwnerError(error instanceof Error ? error.message : "Could not create teacher."); } }}><label>Teacher name<input required minLength={2} value={teacherName} onChange={(event) => setTeacherName(event.target.value)} placeholder="Full name" /></label><label>Teacher email<input required type="email" value={teacherEmail} onChange={(event) => setTeacherEmail(event.target.value)} placeholder="teacher@example.com" /></label><label>Temporary password<input required minLength={8} type="password" value={teacherPassword} onChange={(event) => setTeacherPassword(event.target.value)} placeholder="At least 8 characters" /></label><button className="button button-primary" disabled={ownerLoading}>Create teacher account <ChevronRight size={16} /></button></form>{teacherCreated && <div className="inline-message">{teacherCreated}</div>}<div className="owner-table-wrap"><table className="owner-table"><thead><tr><th>Name</th><th>Email</th><th>Plan</th><th>Created</th></tr></thead><tbody>{teacherList.map((teacher) => <tr key={teacher._id}><td>{teacher.name}</td><td>{teacher.email}</td><td>{teacher.plan}</td><td>{teacher.createdAt ? new Date(teacher.createdAt).toLocaleDateString() : "—"}</td></tr>)}{!teacherList.length && !ownerLoading && <tr><td colSpan={4}>No teacher accounts yet.</td></tr>}</tbody></table></div></section>}
             {(ownerSection === "users" || ownerSection === "students") && <section className="surface-card owner-table-card">
               <div className="card-heading"><div><h3>{ownerSection === "users" ? "All registered users" : "Students / customers"}</h3><p>{ownerSection === "users" ? "Every account registered in LinguaPro." : "Accounts with learning XP recorded."}</p></div><button className="button button-outline" onClick={() => void loadOwnerData(ownerSection)}>Refresh</button></div>
               <div className="owner-table-wrap"><table className="owner-table"><thead><tr><th>Name</th><th>Email</th><th>Plan</th><th>Language</th><th>Level</th><th>XP</th><th>Joined</th></tr></thead><tbody>
