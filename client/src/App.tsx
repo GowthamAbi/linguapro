@@ -59,9 +59,18 @@ function App() {
     } catch { return defaultTasks; }
   });
   const [phraseIndex, setPhraseIndex] = useState(0);
-  const [vocabAnswers, setVocabAnswers] = useState<Record<string, string>>({});
-  const [vocabChecked, setVocabChecked] = useState<Record<string, boolean>>({});
-  const [vocabCompleted, setVocabCompleted] = useState<string[]>([]);
+  const [vocabAnswers, setVocabAnswers] = useState<Record<string, string>>(() => {
+    try { return JSON.parse(localStorage.getItem("linguapro-vocab-answers") || "{}") as Record<string, string>; } catch { return {}; }
+  });
+  const [vocabChecked, setVocabChecked] = useState<Record<string, boolean>>(() => {
+    try { return JSON.parse(localStorage.getItem("linguapro-vocab-checked") || "{}") as Record<string, boolean>; } catch { return {}; }
+  });
+  const [vocabCompleted, setVocabCompleted] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem("linguapro-vocab-completed") || "[]") as string[]; } catch { return []; }
+  });
+  useEffect(() => { localStorage.setItem("linguapro-vocab-answers", JSON.stringify(vocabAnswers)); }, [vocabAnswers]);
+  useEffect(() => { localStorage.setItem("linguapro-vocab-checked", JSON.stringify(vocabChecked)); }, [vocabChecked]);
+  useEffect(() => { localStorage.setItem("linguapro-vocab-completed", JSON.stringify(vocabCompleted)); }, [vocabCompleted]);
   const [isListening, setIsListening] = useState(false);
   const [sessionComplete, setSessionComplete] = useState(false);
   const [message, setMessage] = useState("");
@@ -546,6 +555,7 @@ function App() {
               <div><span className="tag">DAILY PRACTICE</span><h3>Learn one word at a time</h3><p>1. Listen to the word. 2. Read the Tamil meaning. 3. Say the example aloud. 4. Answer the quick question.</p></div>
               <div className="vocab-score"><strong>{vocabCompleted.length}/6</strong><span>words practised</span></div>
             </section>
+            {vocabCompleted.length === 6 && <section className="vocab-finish surface-card"><Check size={28} /><div><h3>Great work! எல்லா வார்த்தைகளையும் முடித்துவிட்டீர்கள்.</h3><p>நீங்கள் 6 வார்த்தைகளையும் பயிற்சி செய்துவிட்டீர்கள். உங்கள் முன்னேற்றம் சேமிக்கப்பட்டுள்ளது.</p></div><button className="button button-outline" onClick={() => { setVocabAnswers({}); setVocabChecked({}); setVocabCompleted([]); }}>Practise again</button></section>}
             <div className="vocabulary-grid">{[
               { word: "Improve", meaning: "To make something better.", tamil: "மேம்படுத்துதல் / இன்னும் சிறப்பாகச் செய்தல்", example: "I want to improve my English.", question: "What does Improve mean?", options: ["To make better", "To stop working", "To arrive late"], answer: "To make better" },
               { word: "Schedule", meaning: "A plan that lists when things happen.", tamil: "வேலைகள் எப்போது நடக்க வேண்டும் என்பதைக் காட்டும் அட்டவணை", example: "I will check the production schedule.", question: "What will you check?", options: ["The production schedule", "The lunch menu", "The bus ticket"], answer: "The production schedule" },
@@ -565,7 +575,7 @@ function App() {
                   <div className="word-example"><strong>Example:</strong> {item.example}</div>
                   <div className="vocab-actions"><button className="button button-outline" onClick={() => { if ("speechSynthesis" in window) { window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance(item.example)); } }}><Volume2 size={15} /> Listen to sentence</button><button className="button button-primary" onClick={() => { if ("speechSynthesis" in window) { window.speechSynthesis.cancel(); window.speechSynthesis.speak(new SpeechSynthesisUtterance(item.example)); } }}>Listen & repeat</button></div>
                   <div className="vocab-quiz"><strong>{item.question}</strong><div className="vocab-options">{item.options.map(option => <label className={"vocab-option " + (checked && option === item.answer ? "is-correct" : "") + (checked && vocabAnswers[item.word] === option && option !== item.answer ? " is-wrong" : "")} key={option}><input type="radio" name={"vocab-" + item.word} value={option} checked={vocabAnswers[item.word] === option} onChange={() => { setVocabAnswers(prev => ({ ...prev, [item.word]: option })); setVocabChecked(prev => ({ ...prev, [item.word]: false })); }} />{option}</label>)}</div>
-                    {!checked ? <button className="button button-outline" disabled={!vocabAnswers[item.word]} onClick={() => { setVocabChecked(prev => ({ ...prev, [item.word]: true })); if (correct && !done) setVocabCompleted(prev => [...prev, item.word]); }}>Check answer</button> : <div className={"vocab-feedback " + (correct ? "feedback-correct" : "feedback-wrong")}>{correct ? "Correct! நல்ல பதில்." : "Not quite. சரியான பதில்: " + item.answer}{!correct && <button className="inline-link" onClick={() => { setVocabAnswers(prev => ({ ...prev, [item.word]: item.answer })); setVocabChecked(prev => ({ ...prev, [item.word]: true })); if (!done) setVocabCompleted(prev => [...prev, item.word]); }}>Show correct answer</button>}</div>}
+                    {!checked ? <button className="button button-outline" disabled={!vocabAnswers[item.word]} onClick={() => { const isCorrect = vocabAnswers[item.word] === item.answer; setVocabChecked(prev => ({ ...prev, [item.word]: true })); if (isCorrect && !done) setVocabCompleted(prev => prev.includes(item.word) ? prev : [...prev, item.word]); }}>Check answer</button> : <div className={"vocab-feedback " + (correct ? "feedback-correct" : "feedback-wrong")}>{correct ? "Correct! நல்ல பதில்." : "Not quite. சரியான பதில்: " + item.answer}{!correct && <button className="inline-link" onClick={() => { setVocabAnswers(prev => ({ ...prev, [item.word]: item.answer })); setVocabChecked(prev => ({ ...prev, [item.word]: true })); if (!done) setVocabCompleted(prev => prev.includes(item.word) ? prev : [...prev, item.word]); }}>Show correct answer</button>}</div>}
                   </div>
                 </div>
                 {done && <span className="vocab-done" title="Practised"><Check size={16} /></span>}
