@@ -80,7 +80,8 @@ export async function listPublishedStudentCourses(request: AuthenticatedRequest,
 }
 
 export async function completeStudentLesson(request: AuthenticatedRequest, response: Response): Promise<void> {
-  const { courseId, lessonId } = request.params;
+  const courseId = String(request.params.courseId);
+  const lessonId = String(request.params.lessonId);
   if (!mongoose.isValidObjectId(courseId) || !mongoose.isValidObjectId(lessonId)) {
     response.status(400).json({ message: "Invalid course or lesson ID." });
     return;
@@ -137,7 +138,7 @@ export async function getTeacherCourseProgress(request: AuthenticatedRequest, re
     const course = courseMap.get(courseId);
     const totalLessons = course ? course.modules.reduce((sum, module) => sum + module.lessons.length, 0) : 0;
     const student = enrollment.studentId && typeof enrollment.studentId === "object" && "name" in enrollment.studentId
-      ? enrollment.studentId as { _id: unknown; name: string; email: string; level?: string; totalXp?: number }
+      ? enrollment.studentId as unknown as { _id: unknown; name: string; email?: string; level?: string; totalXp?: number }
       : null;
     return {
       courseId,
