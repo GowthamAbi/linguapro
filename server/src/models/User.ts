@@ -1,6 +1,19 @@
 import { Schema, model } from "mongoose";
 
-const userSchema = new Schema(
+export interface UserFields {
+  name: string;
+  email: string;
+  passwordHash: string;
+  nativeLanguage: string;
+  targetLanguage: string;
+  level: string;
+  plan: string;
+  totalXp: number;
+  currentStreak: number;
+  lastActiveDate: string;
+}
+
+const userSchema = new Schema<UserFields>(
   {
     name: { type: String, required: true, trim: true, minlength: 2, maxlength: 80 },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true, index: true },
@@ -17,12 +30,11 @@ const userSchema = new Schema(
     timestamps: true,
     toJSON: {
       transform(_document, returnedObject) {
-        delete returnedObject.passwordHash;
-        delete returnedObject.__v;
-        return returnedObject;
+        const { passwordHash: _passwordHash, __v: _version, ...safeObject } = returnedObject;
+        return safeObject;
       },
     },
   },
 );
 
-export const User = model("User", userSchema);
+export const User = model<UserFields>("User", userSchema);
