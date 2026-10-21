@@ -68,7 +68,7 @@ export async function login(request: Request, response: Response): Promise<void>
 
   const user = await User.findOne({ email: parsed.data.email.toLowerCase() }).select("+passwordHash");
 
-  if (!user || !(await bcrypt.compare(parsed.data.password, user.passwordHash))) {
+  if (!user || !(await bcrypt.compare(parsed.data.password, String(user.passwordHash)))) {
     response.status(401).json({ message: "Email or password is incorrect." });
     return;
   }
