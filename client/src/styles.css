@@ -744,3 +744,75 @@ input, select { width: 100%; min-height: 42px; padding: 10px 11px; border: 1px s
   .vocab-lesson-card .word-letter { width: 48px; height: 48px; }
   .vocab-actions { grid-template-columns: minmax(0, 1fr); }
 }
+
+
+/* Practice page responsive repair: prevent option labels from collapsing into vertical text. */
+.vocabulary-grid,
+.vocab-lesson-card,
+.vocab-quiz,
+.vocab-options,
+.vocab-option { min-width: 0; }
+.vocabulary-grid { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+.vocab-lesson-card { display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: start; gap: 14px; }
+.vocab-lesson-card > * { min-width: 0; }
+.vocab-lesson-card h3 { overflow-wrap: break-word; word-break: normal; }
+.vocab-lesson-card p,
+.vocab-lesson-card .word-example { overflow-wrap: break-word; word-break: normal; }
+.vocab-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.vocab-actions .button { width: 100%; min-width: 0; white-space: normal; line-height: 1.35; }
+.vocab-quiz { width: 100%; }
+.vocab-quiz > strong { display: block; margin-bottom: 12px; line-height: 1.5; overflow-wrap: break-word; }
+.vocab-options { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; width: 100%; }
+.vocab-options .vocab-option {
+  display: grid !important;
+  grid-template-columns: 22px minmax(0, 1fr) !important;
+  align-items: center !important;
+  justify-content: start !important;
+  gap: 12px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  min-height: 58px;
+  padding: 14px 16px !important;
+  border: 1px solid #e5e0ee;
+  border-radius: 13px;
+  text-align: left !important;
+  white-space: normal !important;
+  overflow: hidden;
+}
+.vocab-options .vocab-option input[type="radio"] {
+  appearance: auto;
+  display: block !important;
+  width: 20px !important;
+  min-width: 20px !important;
+  max-width: 20px !important;
+  height: 20px !important;
+  min-height: 20px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  justify-self: start !important;
+  align-self: center !important;
+}
+.vocab-options .vocab-option span {
+  display: block !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  text-align: left !important;
+  white-space: normal !important;
+  overflow-wrap: break-word !important;
+  word-break: normal !important;
+  line-height: 1.45 !important;
+  font-size: 15px !important;
+}
+@media (max-width: 600px) {
+  .vocabulary-grid { grid-template-columns: minmax(0, 1fr); }
+  .vocab-lesson-card { grid-template-columns: 44px minmax(0, 1fr); gap: 11px; padding: 16px; }
+  .vocab-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .vocab-actions .button { min-height: 54px; padding: 10px 8px; font-size: 13px; }
+  .vocab-options .vocab-option { grid-template-columns: 22px minmax(0, 1fr) !important; padding: 13px 12px !important; }
+}
+@media (max-width: 360px) {
+  .vocab-actions { grid-template-columns: minmax(0, 1fr); }
+}
