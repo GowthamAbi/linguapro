@@ -454,3 +454,17 @@ input, select { width: 100%; min-height: 42px; padding: 10px 11px; border: 1px s
 .student-practice-history-meta { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; }
 .student-practice-history-entry p { margin: .65rem 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .student-practice-history-entry small { color: var(--muted, #667085); font-size: .8rem; }
+
+
+/* Multiple-choice quiz authoring and student results */
+.course-quiz-editor { margin-top: 1rem; padding: 1rem; border: 1px solid var(--border-color, #dfe4ea); border-radius: 12px; display: grid; gap: .8rem; }
+.course-quiz-question-editor { display: grid; gap: .65rem; }
+.student-quiz-question { min-width: 0; margin: .85rem 0; padding: .8rem; border: 1px solid var(--border-color, #dfe4ea); border-radius: 10px; }
+.student-quiz-question legend { padding: 0 .3rem; font-weight: 650; }
+.student-quiz-option { display: flex; align-items: flex-start; gap: .55rem; padding: .55rem .6rem; border-radius: 8px; cursor: pointer; }
+.student-quiz-option input { margin-top: .2rem; flex: 0 0 auto; }
+.student-quiz-option span { overflow-wrap: anywhere; }
+.student-quiz-results { margin-top: 1rem; display: grid; gap: .75rem; }
+.student-quiz-results h4 { margin: 0; }
+.student-quiz-results article { padding: .8rem; border-radius: 10px; background: var(--surface-secondary, #f6f7f9); }
+.student-quiz-results article p { margin: .45rem 0 0; }
