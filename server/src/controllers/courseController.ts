@@ -117,6 +117,7 @@ async function ensureStarterEnglishCourse(): Promise<void> {
     status: "published",
     modules: [
       { title: "Day 1: Greetings and Introductions", lessons: [
+        { title: "Article A: The First Step", content: "Learn the article A with a visual lesson, sound guidance, examples, and interactive tasks.", tamilMeaning: "ஒருமையில் உள்ள பெயர்ச்சொல்லை முதல் முறையாகக் குறிப்பிடும்போது, அடுத்த சொல்லின் தொடக்க ஒலியைப் பொறுத்து A அல்லது AN பயன்படுத்துகிறோம். இந்தப் பாடத்தில் A-ஐப் பயிற்சி செய்வோம்.", practiceType: "reading" },
         { title: "Say Hello", content: "Hello!\nGood morning.\nHow are you?\nI am fine, thank you.\nWhat is your name?\nMy name is ____.", tamilMeaning: "வணக்கம்!\nகாலை வணக்கம்.\nநீங்கள் எப்படி இருக்கிறீர்கள்?\nநான் நலமாக இருக்கிறேன், நன்றி.\nஉங்கள் பெயர் என்ன?\nஎன் பெயர் ____.", practiceType: "speaking" },
         { title: "Introduce Yourself", content: "My name is Arun.\nI am from Tamil Nadu.\nI live in Coimbatore.\nI am learning English.\nNice to meet you.", tamilMeaning: "என் பெயர் அருண்.\nநான் தமிழ்நாட்டைச் சேர்ந்தவன்.\nநான் கோயம்புத்தூரில் வசிக்கிறேன்.\nநான் ஆங்கிலம் கற்றுக்கொண்டு இருக்கிறேன்.\nஉங்களைச் சந்தித்ததில் மகிழ்ச்சி.", practiceType: "roleplay" },
       ]},
