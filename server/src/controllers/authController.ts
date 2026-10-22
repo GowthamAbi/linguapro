@@ -94,7 +94,7 @@ export async function login(request: Request, response: Response): Promise<void>
   }
 
   setSessionCookie(response, createSessionToken(user.id));
-  response.json({ message: ownerLogin ? "Owner signed in successfully." : "Signed in successfully.", data: { user: user.toJSON() } });
+  response.json({ message: ownerLogin ? "Owner signed in successfully." : "Signed in successfully.", data: { user: { ...user.toJSON(), role: ownerLogin ? "owner" : user.role } } });
 }
 
 export function logout(_request: Request, response: Response): void {
@@ -119,5 +119,6 @@ export async function currentUser(
     return;
   }
 
-  response.json({ data: { user: user.toJSON() } });
+  const isOwner = user.email.trim().toLowerCase() === process.env.OWNER_EMAIL?.trim().toLowerCase();
+  response.json({ data: { user: { ...user.toJSON(), role: isOwner ? "owner" : user.role } } });
 }
