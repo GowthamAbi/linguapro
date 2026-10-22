@@ -71,7 +71,25 @@ const starterTeacherEmail = "linguapro-starter@system.invalid";
 
 async function ensureStarterEnglishCourse(): Promise<void> {
   const existing = await Course.findOne({ status: "published", title: "Basic English Speaking — Start Here" }).select("_id").lean();
-  if (existing) return;
+  if (existing) {
+    const existingCourse = await Course.findById(existing._id);
+    if (existingCourse) {
+      const hasArticleLesson = existingCourse.modules.some((module) => module.lessons.some((lesson) => lesson.title === "Article A: The First Step"));
+      if (!hasArticleLesson) {
+        const firstModule = existingCourse.modules.find((module) => module.title === "Day 1: Greetings and Introductions");
+        const articleLesson = {
+          title: "Article A: The First Step",
+          content: "Learn the article A with a visual lesson, sound guidance, examples, and interactive tasks.",
+          tamilMeaning: "ஒருமையில் உள்ள பெயர்ச்சொல்லை முதல் முறையாகக் குறிப்பிடும்போது, அடுத்த சொல்லின் தொடக்க ஒலியைப் பொறுத்து A அல்லது AN பயன்படுத்துகிறோம். இந்தப் பாடத்தில் A-ஐப் பயிற்சி செய்வோம்.",
+          practiceType: "reading" as const,
+        };
+        if (firstModule) firstModule.lessons.unshift(articleLesson);
+        else existingCourse.modules.unshift({ title: "Day 1: Articles", lessons: [articleLesson] });
+        await existingCourse.save();
+      }
+    }
+    return;
+  }
 
   let teacherId = (await User.findOne({ email: starterTeacherEmail }).select("_id").lean())?._id;
   if (!teacherId) {
