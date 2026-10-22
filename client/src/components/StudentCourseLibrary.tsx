@@ -31,6 +31,9 @@ export default function StudentCourseLibrary({ apiBase, authToken = "", initialL
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<Record<string, { completedLessonIds: string[]; completedAt?: string | null }>>({});
   const [progressMessage, setProgressMessage] = useState("");
+  const [openPractice, setOpenPractice] = useState<string>("");
+  const [practiceResponses, setPracticeResponses] = useState<Record<string, string>>({});
+  const [practiceFeedback, setPracticeFeedback] = useState<Record<string, string>>({});
   const [xpHistory, setXpHistory] = useState<{ totalXp: number; weekly: { date: string; day: string; xp: number }[]; events: { _id: string; label: string; xpEarned: number; earnedOn: string }[] } | null>(null);
 
   function authHeaders(extra?: HeadersInit): Headers { const headers = new Headers(extra); if (authToken) headers.set("Authorization", "Bearer " + authToken); return headers; }
@@ -132,6 +135,14 @@ export default function StudentCourseLibrary({ apiBase, authToken = "", initialL
                 <div className="student-lesson-heading"><strong>{moduleIndex + 1}.{lessonIndex + 1} {lesson.title}</strong><span className="tag">{practiceLabels[lesson.practiceType]}</span></div>
                 {lesson.content && <p>{lesson.content}</p>}
                 {lesson.tamilMeaning && <div className="student-tamil-meaning"><Languages size={16} /><div><strong>தமிழ் விளக்கம்</strong><p>{lesson.tamilMeaning}</p></div></div>}
+                <button className="button button-outline student-practice-toggle" type="button" onClick={() => { setOpenPractice(openPractice === lesson._id ? "" : lesson._id); setPracticeFeedback((old) => ({ ...old, [lesson._id]: "" })); }}>{openPractice === lesson._id ? "Hide practice" : "Start practice"} · {practiceLabels[lesson.practiceType]}</button>
+                {openPractice === lesson._id && <div className="student-practice-panel">
+                  <strong>{lesson.practiceType === "speaking" ? "🎙️ Speaking challenge" : lesson.practiceType === "listening" ? "🎧 Listen & repeat" : lesson.practiceType === "quiz" ? "🧠 Quick knowledge check" : lesson.practiceType === "roleplay" ? "💬 Real-life role-play" : "✍️ Reading & writing practice"}</strong>
+                  <p>{lesson.practiceType === "speaking" ? "Say the lesson phrase aloud. Then type what you said from memory." : lesson.practiceType === "listening" ? "Read the lesson aloud slowly, repeat it twice, then type the key sentence you remember." : lesson.practiceType === "quiz" ? "In your own words, write the main idea you learned from this lesson." : lesson.practiceType === "roleplay" ? "Imagine you are using this English in a real conversation. Write your reply below." : "Write one sentence using the new phrase or idea from this lesson."}</p>
+                  <textarea aria-label={"Practice response for " + lesson.title} rows={3} value={practiceResponses[lesson._id] ?? ""} onChange={(event) => { setPracticeResponses((old) => ({ ...old, [lesson._id]: event.target.value })); setPracticeFeedback((old) => ({ ...old, [lesson._id]: "" })); }} placeholder="Type your practice answer here…" />
+                  <button type="button" className="button button-primary" onClick={() => { const answer = (practiceResponses[lesson._id] ?? "").trim(); setPracticeFeedback((old) => ({ ...old, [lesson._id]: answer.length >= 8 ? "Nice effort! Read your answer once more and check that it matches the lesson goal. Your response is ready." : "Write at least one complete sentence (8 characters or more), then check again." })); }}>Check my practice</button>
+                  {practiceFeedback[lesson._id] && <p className="student-practice-feedback" role="status">{practiceFeedback[lesson._id]}</p>}
+                </div>}
                 <button className={"button " + (isDone ? "button-outline" : "button-primary") + " student-lesson-complete"} disabled={isDone} onClick={() => void completeLesson(course._id, lesson._id)}>{isDone ? "✓ Completed" : "Mark lesson complete"}</button>
               </article>;
             })}
