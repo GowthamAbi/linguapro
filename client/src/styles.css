@@ -468,3 +468,20 @@ input, select { width: 100%; min-height: 42px; padding: 10px 11px; border: 1px s
 .student-quiz-results h4 { margin: 0; }
 .student-quiz-results article { padding: .8rem; border-radius: 10px; background: var(--surface-secondary, #f6f7f9); }
 .student-quiz-results article p { margin: .45rem 0 0; }
+
+
+/* Student quiz progress chart */
+.student-quiz-progress-chart { margin: 1rem 0; padding: 1rem; border: 1px solid var(--border, #e4e7ec); border-radius: 12px; }
+.student-quiz-chart-heading { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: .8rem; }
+.student-quiz-chart-heading span { color: var(--text-muted, #667085); font-size: .8rem; }
+.student-quiz-chart-bars { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: .65rem; align-items: end; min-height: 150px; }
+.student-quiz-chart-bar { display: flex; flex-direction: column; align-items: center; justify-content: end; gap: .35rem; min-width: 0; height: 150px; }
+.student-quiz-chart-bar strong { font-size: .78rem; }
+.student-quiz-chart-track { display: flex; align-items: end; width: min(100%, 34px); height: 105px; overflow: hidden; border-radius: 7px; background: var(--surface-secondary, #f1f3f6); }
+.student-quiz-chart-track span { display: block; width: 100%; min-height: 3px; border-radius: 7px 7px 0 0; background: var(--accent, #5267d8); }
+.student-quiz-chart-bar small { color: var(--text-muted, #667085); font-size: .75rem; }
+.student-quiz-review-focus { margin: .9rem 0 1rem; padding: .85rem 1rem; border-radius: 10px; background: var(--surface-secondary, #f7f8fa); }
+.student-quiz-review-focus > strong { display: block; margin-bottom: .5rem; }
+.student-quiz-review-row { display: flex; justify-content: space-between; align-items: center; gap: .75rem; padding: .45rem 0; border-top: 1px solid var(--border, #e4e7ec); }
+.student-quiz-review-row > span:first-child { overflow-wrap: anywhere; }
+@media (max-width: 480px) { .student-quiz-chart-bars { gap: .35rem; } .student-quiz-chart-bar strong { font-size: .7rem; } .student-quiz-progress-chart { padding: .7rem; } }
