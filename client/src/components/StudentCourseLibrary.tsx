@@ -36,7 +36,8 @@ export default function StudentCourseLibrary({ apiBase, authToken = "", initialL
   const [openPractice, setOpenPractice] = useState<string>("");
   const [practiceResponses, setPracticeResponses] = useState<Record<string, string>>({});
   const [practiceFeedback, setPracticeFeedback] = useState<Record<string, string>>({});
-  const [xpHistory, setXpHistory] = useState<{ totalXp: number; dailyXpGoal: number; todayXp: number; streakDays: number; activeDaysThisWeek: number; weekly: { date: string; day: string; xp: number }[]; events: { _id: string; label: string; xpEarned: number; earnedOn: string }[] } | null>(null);\n  const [goalSaving, setGoalSaving] = useState(false);\n  const [goalMessage, setGoalMessage] = useState("");
+  const [xpHistory, setXpHistory] = useState<{ totalXp: number; dailyXpGoal: number; todayXp: number; streakDays: number; activeDaysThisWeek: number; weekly: { date: string; day: string; xp: number }[]; events: { _id: string; label: string; xpEarned: number; earnedOn: string }[] } | null>(null);
+  const [goalSaving, setGoalSaving] = useState(false);\n  const [goalMessage, setGoalMessage] = useState("");
   const [quizSelections, setQuizSelections] = useState<Record<string, number[]>>({});
   const [quizResults, setQuizResults] = useState<Record<string, QuizResult>>({});
   const [quizMessages, setQuizMessages] = useState<Record<string, string>>({});
