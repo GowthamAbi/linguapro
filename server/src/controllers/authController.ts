@@ -29,7 +29,7 @@ function createSessionToken(userId: string): string {
 function setSessionCookie(response: Response, token: string): void {
   response.cookie("linguapro_token", token, {
     httpOnly: true,
-    secure: process.env.COOKIE_SECURE === "true",
+    secure: process.env.NODE_ENV === "production" || process.env.COOKIE_SECURE === "true",
     sameSite: "none",
     maxAge: 7 * 24 * 60 * 60 * 1000,
     path: "/",
@@ -100,8 +100,8 @@ export async function login(request: Request, response: Response): Promise<void>
 export function logout(_request: Request, response: Response): void {
   response.clearCookie("linguapro_token", {
     httpOnly: true,
-    secure: process.env.COOKIE_SECURE === "true",
-    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production" || process.env.COOKIE_SECURE === "true",
+    sameSite: "none",
     path: "/",
   });
 
