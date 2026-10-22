@@ -12,6 +12,7 @@ export interface UserFields {
   totalXp: number;
   currentStreak: number;
   lastActiveDate: string;
+  dailyXpGoal: number;
 }
 
 const userSchema = new Schema<UserFields>(
@@ -27,6 +28,7 @@ const userSchema = new Schema<UserFields>(
     totalXp: { type: Number, default: 0, min: 0 },
     currentStreak: { type: Number, default: 0, min: 0 },
     lastActiveDate: { type: String, default: "" },
+    dailyXpGoal: { type: Number, default: 20, enum: [10, 20, 30, 50] },
   },
   {
     timestamps: true,
