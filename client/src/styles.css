@@ -427,3 +427,11 @@ input, select { width: 100%; min-height: 42px; padding: 10px 11px; border: 1px s
 .student-learning-levels small{font-size:10px;color:var(--muted)}
 @media(max-width:700px){.student-learning-hero{padding:22px;gap:6px}.student-learning-hero-art{width:100px;transform:scale(.82);margin-right:-12px}.student-learning-method{gap:6px}.student-learning-method span{padding:6px 8px}.student-learning-levels{grid-template-columns:1fr;gap:8px}.student-learning-levels article{padding:10px 12px}}
 @media(max-width:430px){.student-learning-hero-art{display:none}.student-learning-hero{padding:20px}.student-learning-hero h2{font-size:26px}}
+
+/* Interactive English level selector */
+.student-learning-levels .student-level-button{display:flex;align-items:center;gap:12px;width:100%;text-align:left;color:inherit;font:inherit;cursor:pointer;transition:border-color .18s,box-shadow .18s,transform .18s}
+.student-learning-levels .student-level-button:hover,.student-learning-levels .student-level-button.selected{border-color:#8b5cf6;box-shadow:0 0 0 3px #8b5cf61a;transform:translateY(-1px)}
+.student-learning-levels .student-level-button>div{display:grid;gap:4px;flex:1;min-width:0}
+.student-learning-levels .student-level-button>small{font-size:10px;color:var(--muted);white-space:nowrap}
+.student-learning-method{row-gap:8px}
+@media(max-width:700px){.student-learning-levels .student-level-button{padding:10px 12px}}
