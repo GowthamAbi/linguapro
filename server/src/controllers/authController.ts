@@ -66,7 +66,29 @@ export async function login(request: Request, response: Response): Promise<void>
     return;
   }
 
-  const user = await User.findOne({ email: parsed.data.email.toLowerCase() }).select("+passwordHash");
+  const email = parsed.data.email.toLowerCase();
+  const ownerEmail = process.env.OWNER_EMAIL?.trim().toLowerCase();
+  const ownerPassword = process.env.OWNER_PASSWORD;
+
+  // The Render owner credentials are the recovery/bootstrap source of truth.
+  // On a matching owner login, create the account if missing or sync its password
+  // hash so the configured OWNER_PASSWORD works even when MongoDB has stale credentials.
+  if (ownerEmail && ownerPassword && email === ownerEmail && parsed.data.password === ownerPassword) {
+    const passwordHash = await bcrypt.hash(ownerPassword, 12);
+    let owner = await User.findOne({ email }).select("+passwordHash");
+    if (!owner) {
+      owner = await User.create({ name: "LinguaPro Owner", email, passwordHash });
+    } else if (!(await bcrypt.compare(ownerPassword, String(owner.passwordHash)))) {
+      owner.passwordHash = passwordHash;
+      await owner.save();
+    }
+
+    setSessionCookie(response, createSessionToken(owner.id));
+    response.json({ message: "Owner signed in successfully.", data: { user: owner.toJSON() } });
+    return;
+  }
+
+  const user = await User.findOne({ email }).select("+passwordHash");
 
   if (!user || !(await bcrypt.compare(parsed.data.password, String(user.passwordHash)))) {
     response.status(401).json({ message: "Email or password is incorrect." });
