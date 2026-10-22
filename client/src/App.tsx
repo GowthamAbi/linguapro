@@ -649,12 +649,12 @@ function App() {
           </>}
           {page === "courses" && <>
             <PageTitle eyebrow="YOUR LEARNING PATH" title="My learning" subtitle="A clear path from first words to confident conversations." />
-            <div className="course-grid">{[
-              { icon: "🌱", level: "BASIC", title: "Everyday essentials", text: "Greetings, introductions, numbers, and common expressions.", progress: 20, lessons: "12 lessons" },
-              { icon: "🚀", level: "INTERMEDIATE", title: "Speak at work", text: "Meetings, updates, requests, and workplace English.", progress: 0, lessons: "16 lessons" },
-              { icon: "🎓", level: "ADVANCED", title: "Fluent conversations", text: "Express opinions and handle complex discussions.", progress: 0, lessons: "20 lessons" },
-            ].map((course) => <article className="course-card" key={course.level}><div className="course-art">{course.icon}</div><span className="course-level">{course.level}</span><h3>{course.title}</h3><p>{course.text}</p><div className="course-meta"><span>{course.lessons}</span><span>{course.progress}% complete</span></div><div className="progress-track"><span style={{ width: course.progress + "%" }} /></div><button className="button button-outline full-width" onClick={() => navigate("speaking")}>Open course <ChevronRight size={16} /></button></article>)}</div>
-            <StudentCourseLibrary apiBase={apiBase} />
+            <section className="student-learning-hero">
+              <div className="student-learning-hero-copy"><span className="course-builder-eyebrow">YOUR ENGLISH JOURNEY</span><h2>Small steps. <span>Confident English.</span></h2><p>Learn a lesson, practise what you learn, speak out loud, and review your progress. Your course progress and XP are saved to your account.</p><div className="student-learning-method"><span>01 Learn</span><i>→</i><span>02 Practise</span><i>→</i><span>03 Speak</span><i>→</i><span>04 Review</span></div></div>
+              <div className="student-learning-hero-art" aria-hidden="true"><div className="learning-book-orb"><BookOpen size={42}/></div><span className="learning-float learning-float-one">Aa</span><span className="learning-float learning-float-two"><Languages size={20}/></span><span className="learning-float learning-float-three"><Star size={18}/></span></div>
+            </section>
+            <div className="student-learning-levels"><article><span>🌱</span><div><strong>Basic</strong><small>Build your foundations</small></div></article><article><span>🚀</span><div><strong>Intermediate</strong><small>Use English with confidence</small></div></article><article><span>🎓</span><div><strong>Advanced</strong><small>Communicate fluently</small></div></article></div>
+            <StudentCourseLibrary apiBase={apiBase} authToken={authToken} />
           </>}
 
           {page === "speaking" && <>
