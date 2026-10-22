@@ -52,12 +52,32 @@ function readStored<T>(key: string, fallback: T): T {
 
 function pageFromPath(pathname: string): Page {
   const path = pathname.replace(/\/+$/, "") || "/";
-  if (path === "/owner") return "owner";
+  if (path === "/owner" || path.startsWith("/admin/")) return "owner";
   if (path === "/teacher") return "teacher";
-  if (path === "/student" || path === "/") return "dashboard";
+  if (path === "/student" || path === "/" || path === "/dashboard" || path === "/onboarding") return "dashboard";
+  if (path === "/features" || path === "/courses" || path.startsWith("/courses/")) return "courses";
+  if (path === "/pricing") return "plans";
+  if (path === "/login" || path === "/register") return "dashboard";
+  if (path === "/practice" || path === "/study-play") return "vocabulary";
+  if (path === "/ai-coach") return "speaking";
+  if (path === "/revision" || path === "/certificates") return "progress";
+  if (path === "/settings") return "profile";
+  if (path === "/lessons" || path.startsWith("/lessons/")) return "speaking";
+  if (path === "/privacy" || path === "/terms") return "profile";
   const allowed: Page[] = ["dashboard", "courses", "speaking", "vocabulary", "progress", "profile", "plans", "assignments"];
   const candidate = path.slice(1) as Page;
   return allowed.includes(candidate) ? candidate : "dashboard";
+}
+
+function ownerSectionFromPath(pathname: string): string {
+  const section = pathname.replace(/^\/admin\/?/, "").split("/")[0];
+  const aliases: Record<string, string> = {
+    "": "overview", overview: "overview", users: "users", students: "students",
+    courses: "courses", lessons: "lessons", questions: "assessments",
+    subscriptions: "subscriptions", analytics: "reports", settings: "settings",
+    "audit-logs": "reports",
+  };
+  return aliases[section] ?? "overview";
 }
 
 function App() {
@@ -116,7 +136,7 @@ function App() {
   const ownerEmail = (import.meta.env.VITE_OWNER_EMAIL as string | undefined)?.trim().toLowerCase() ?? "";
   const isOwner = authenticated && (profile.role === "owner" || (!!ownerEmail && profile.email.trim().toLowerCase() === ownerEmail));
   const isTeacher = authenticated && profile.role === "teacher" && !isOwner;
-  const [ownerSection, setOwnerSection] = useState("overview");
+  const [ownerSection, setOwnerSection] = useState(() => ownerSectionFromPath(window.location.pathname));
   const [ownerStats, setOwnerStats] = useState<{ totalUsers: number; totalTeachers: number; totalCourses: number; premiumUsers: number; freeUsers: number; activeLearners: number; totalXp: number } | null>(null);
   const [ownerUsers, setOwnerUsers] = useState<Array<{ _id: string; name: string; email: string; role?: string; plan: string; targetLanguage: string; level: string; totalXp: number; currentStreak: number; createdAt: string }>>([]);
   const [ownerLoading, setOwnerLoading] = useState(false);
@@ -210,7 +230,7 @@ function App() {
   }
 
   useEffect(() => {
-    const onPopState = () => setPage(pageFromPath(window.location.pathname));
+    const onPopState = () => { setPage(pageFromPath(window.location.pathname)); if (window.location.pathname.startsWith("/admin/")) setOwnerSection(ownerSectionFromPath(window.location.pathname)); if (window.location.pathname === "/login") setAuthMode("login"); if (window.location.pathname === "/register") setAuthMode("register"); };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
@@ -226,7 +246,7 @@ function App() {
           setAuthenticated(true);
           setProfile((current) => ({ ...current, ...user, role: user.role ?? "student" }));
           const requestedRolePath = window.location.pathname;
-          if (["/owner", "/teacher", "/student"].includes(requestedRolePath)) {
+          if (["/owner", "/teacher", "/student"].includes(requestedRolePath) || requestedRolePath.startsWith("/admin/")) {
             const destination = user.role === "owner" ? "/owner" : user.role === "teacher" ? "/teacher" : "/student";
             const destinationPage: Page = user.role === "owner" ? "owner" : user.role === "teacher" ? "teacher" : "dashboard";
             if (requestedRolePath !== destination) window.history.replaceState({}, "", destination);
@@ -242,7 +262,7 @@ function App() {
   const phrase = phrases[phraseIndex];
 
   function navigate(next: Page) {
-    const path = next === "owner" || next === "teacher" ? "/" + next : next === "dashboard" ? "/student" : "/" + next;
+    const path = next === "owner" ? "/admin/overview" : next === "teacher" ? "/teacher" : next === "dashboard" ? "/dashboard" : next === "plans" ? "/pricing" : next === "profile" ? "/settings" : next === "vocabulary" ? "/practice" : "/" + next;
     if (window.location.pathname !== path) window.history.pushState({}, "", path);
     setPage(next);
     setMenuOpen(false);
@@ -459,7 +479,7 @@ function App() {
       setAuthenticated(true);
       const signedInRole = payload.data?.user?.role ?? "student";
       setAuthMode(null);
-      if (signedInRole === "owner") { setOwnerSection("overview"); window.history.replaceState({}, "", "/owner"); setPage("owner"); }
+      if (signedInRole === "owner") { setOwnerSection("overview"); window.history.replaceState({}, "", "/admin/overview"); setPage("owner"); }
       else if (signedInRole === "teacher") { window.history.replaceState({}, "", "/teacher"); setPage("teacher"); }
       else { window.history.replaceState({}, "", "/student"); setPage("dashboard"); }
       await loadServerProgress();
@@ -499,7 +519,7 @@ function App() {
               { id: "materials", label: "Learning materials", icon: BookOpen }, { id: "announcements", label: "Announcements", icon: Send },
               { id: "settings", label: "Site settings", icon: Settings }, { id: "emails", label: "Email templates", icon: LogIn },
               { id: "reports", label: "Reports & analytics", icon: TrendingUp },
-            ].map(({ id, label, icon: Icon }) => <button key={id} className={"nav-item " + (ownerSection === id ? "active" : "")} onClick={() => { setOwnerSection(id); if (["overview", "users", "students", "teachers"].includes(id)) void loadOwnerData(id as "overview" | "users" | "students" | "teachers"); }}><Icon size={17} /><span>{label}</span></button>)
+            ].map(({ id, label, icon: Icon }) => <button key={id} className={"nav-item " + (ownerSection === id ? "active" : "")} onClick={() => { setOwnerSection(id); const route = id === "overview" ? "/admin/overview" : id === "admins" ? "/admin/users" : id === "pricing" ? "/admin/subscriptions" : id === "reports" ? "/admin/analytics" : id === "assessments" ? "/admin/questions" : "/admin/" + id; window.history.pushState({}, "", route); if (["overview", "users", "students", "teachers"].includes(id)) void loadOwnerData(id as "overview" | "users" | "students" | "teachers"); }}><Icon size={17} /><span>{label}</span></button>)
             : navItems.map(({ id, label, icon: Icon }) => <button key={id} className={"nav-item " + (page === id ? "active" : "")} onClick={() => navigate(id)}><Icon size={18} /><span>{label}</span>{id === "dashboard" && <span className="nav-dot" />}</button>)}
           </nav>
           {!isOwner && <div className="sidebar-premium"><div className="premium-icon"><Crown size={20} /></div><strong>Unlock your potential</strong><p>Get more lessons and guided practice with Premium.</p><button className="button button-light" onClick={() => navigate("plans")}>Explore plans <ChevronRight size={15} /></button></div>}
