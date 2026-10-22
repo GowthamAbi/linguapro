@@ -102,11 +102,17 @@ function App() {
   const [authPassword, setAuthPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
+  const [authToken, setAuthToken] = useState(() => sessionStorage.getItem("linguapro-token") ?? "");
   const [serverXp, setServerXp] = useState<number | null>(null);
   const [serverStreak, setServerStreak] = useState(0);
   const [serverCompletedIds, setServerCompletedIds] = useState<string[]>([]);
 
   const apiBase = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ?? "";
+  async function apiFetch(url: string, init: RequestInit = {}): Promise<Response> {
+    const headers = new Headers(init.headers ?? {});
+    if (authToken) headers.set("Authorization", "Bearer " + authToken);
+    return fetch(url, { ...init, headers, credentials: "include" });
+  }
   const ownerEmail = (import.meta.env.VITE_OWNER_EMAIL as string | undefined)?.trim().toLowerCase() ?? "";
   const isOwner = authenticated && (profile.role === "owner" || (!!ownerEmail && profile.email.trim().toLowerCase() === ownerEmail));
   const isTeacher = authenticated && profile.role === "teacher" && !isOwner;
@@ -136,7 +142,7 @@ function App() {
     setOwnerLoading(true); setOwnerError("");
     try {
       if (section === "overview") {
-        const response = await fetch(apiBase + "/admin/overview", { credentials: "include" });
+        const response = await apiFetch(apiBase + "/admin/overview", { credentials: "include" });
         const payload = await response.json() as { message?: string; data?: { totalUsers: number; premiumUsers: number; freeUsers: number; activeLearners: number; totalXp: number } };
         if (!response.ok || !payload.data) throw new Error(payload.message ?? "Could not load owner overview.");
         setOwnerStats(payload.data);
@@ -211,7 +217,7 @@ function App() {
 
   useEffect(() => {
     if (!apiBase) return;
-    fetch(apiBase + "/auth/me", { credentials: "include" })
+    apiFetch(apiBase + "/auth/me")
       .then(async (response) => {
         if (!response.ok) return;
         const payload = await response.json() as { data?: { user?: { name?: string; email?: string; nativeLanguage?: string; targetLanguage?: string; level?: LearningLevel; plan?: "Free" | "Premium"; role?: "student" | "teacher" | "owner" } } };
@@ -444,8 +450,9 @@ function App() {
           ? { name: authName, email: authEmail, password: authPassword }
           : { email: authEmail, password: authPassword }),
       });
-      const payload = await response.json() as { message?: string; data?: { user?: { name?: string; email?: string; role?: "student" | "teacher" | "owner" } } };
+      const payload = await response.json() as { message?: string; token?: string; data?: { user?: { name?: string; email?: string; role?: "student" | "teacher" | "owner" } } };
       if (!response.ok) throw new Error(payload.message ?? "Unable to sign in.");
+      if (payload.token) { sessionStorage.setItem("linguapro-token", payload.token); setAuthToken(payload.token); }
       if (payload.data?.user?.name) saveProfile("name", payload.data.user.name);
       if (payload.data?.user?.email) saveProfile("email", payload.data.user.email);
       if (payload.data?.user?.role) saveProfile("role", payload.data.user.role);
