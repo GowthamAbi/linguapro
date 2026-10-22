@@ -15,7 +15,9 @@ export function authenticate(
   response: Response,
   next: NextFunction,
 ): void {
-  const token = request.cookies?.linguapro_token;
+  const authorization = request.headers.authorization;
+  const bearerToken = authorization?.startsWith("Bearer ") ? authorization.slice(7).trim() : undefined;
+  const token = request.cookies?.linguapro_token || bearerToken;
 
   if (!token) {
     response.status(401).json({ message: "Please sign in to continue." });
