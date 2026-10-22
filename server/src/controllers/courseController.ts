@@ -12,6 +12,7 @@ const lessonSchema = z.object({
   content: z.string().max(5000).optional().default(""),
   tamilMeaning: z.string().max(3000).optional().default(""),
   practiceType: z.enum(["reading", "speaking", "listening", "quiz", "roleplay"]).default("speaking"),
+  quizQuestions: z.array(z.object({ question: z.string().trim().min(3).max(500), options: z.array(z.string().trim().min(1).max(200)).length(4), correctAnswerIndex: z.number().int().min(0).max(3), explanationTamil: z.string().max(1000).optional().default("") })).max(20).default([]),
 });
 const moduleSchema = z.object({
   title: z.string().trim().min(2).max(160),
@@ -121,6 +122,51 @@ export async function completeStudentLesson(request: AuthenticatedRequest, respo
   });
 }
 
+
+
+
+export async function submitStudentQuiz(request: AuthenticatedRequest, response: Response): Promise<void> {
+  const courseId = String(request.params.courseId);
+  const lessonId = String(request.params.lessonId);
+  if (!mongoose.isValidObjectId(courseId) || !mongoose.isValidObjectId(lessonId)) {
+    response.status(400).json({ message: "Invalid course or lesson ID." });
+    return;
+  }
+  const parsed = z.object({ answers: z.array(z.number().int().min(0).max(3)).max(20) }).safeParse(request.body);
+  if (!parsed.success) {
+    response.status(400).json({ message: "Please submit valid quiz answers." });
+    return;
+  }
+  const course = await Course.findOne({ _id: courseId, status: "published" }).select("modules");
+  if (!course) {
+    response.status(404).json({ message: "Published course not found." });
+    return;
+  }
+  const lesson = course.modules.flatMap((module) => module.lessons).find((item) => String(item._id) === lessonId);
+  if (!lesson) {
+    response.status(404).json({ message: "Lesson not found in this course." });
+    return;
+  }
+  const questions = (lesson as unknown as { quizQuestions?: { question: string; options: string[]; correctAnswerIndex: number; explanationTamil?: string }[] }).quizQuestions ?? [];
+  if (lesson.practiceType !== "quiz" || questions.length === 0) {
+    response.status(400).json({ message: "This lesson does not have quiz questions yet." });
+    return;
+  }
+  if (parsed.data.answers.length !== questions.length) {
+    response.status(400).json({ message: "Please answer every question before submitting." });
+    return;
+  }
+  const results = questions.map((question, index) => ({
+    question: question.question,
+    options: question.options,
+    selectedAnswerIndex: parsed.data.answers[index],
+    correctAnswerIndex: question.correctAnswerIndex,
+    isCorrect: parsed.data.answers[index] === question.correctAnswerIndex,
+    explanationTamil: question.explanationTamil ?? "",
+  }));
+  const score = results.filter((item) => item.isCorrect).length;
+  response.json({ data: { score, total: questions.length, percentage: Math.round(score / questions.length * 100), results } });
+}
 
 
 export async function saveStudentPractice(request: AuthenticatedRequest, response: Response): Promise<void> {
