@@ -3,7 +3,8 @@ import type { FormEvent } from "react";
 import { BookOpen, Plus, Send, Save, PencilLine } from "lucide-react";
 
 type PracticeType = "reading" | "speaking" | "listening" | "quiz" | "roleplay";
-type LessonDraft = { title: string; content: string; tamilMeaning: string; practiceType: PracticeType };
+type QuizQuestionDraft = { question: string; options: [string, string, string, string]; correctAnswerIndex: number; explanationTamil: string };
+type LessonDraft = { title: string; content: string; tamilMeaning: string; practiceType: PracticeType; quizQuestions: QuizQuestionDraft[] };
 type ModuleDraft = { title: string; lessons: LessonDraft[] };
 type Course = {
   _id: string; title: string; description: string;
@@ -15,7 +16,7 @@ type Course = {
 };
 type Props = { apiBase: string };
 
-const emptyLesson = (): LessonDraft => ({ title: "", content: "", tamilMeaning: "", practiceType: "speaking" });
+const emptyLesson = (): LessonDraft => ({ title: "", content: "", tamilMeaning: "", practiceType: "speaking", quizQuestions: [{ question: "", options: ["", "", "", ""], correctAnswerIndex: 0, explanationTamil: "" }] });
 const emptyModule = (): ModuleDraft => ({ title: "", lessons: [emptyLesson()] });
 const labels: Record<string, string> = {
   kids: "Kids", adults: "Adults", "working-professionals": "Working Professionals", "job-seekers": "Job Seekers / Interview",
@@ -59,7 +60,7 @@ export default function TeacherCourseBuilder({ apiBase }: Props) {
   function editCourse(course: Course) {
     setEditingId(course._id); setTitle(course.title); setDescription(course.description);
     setLearnerCategory(course.learnerCategory); setLevel(course.level); setIndustry(course.industry); setGoal(course.goal);
-    setModules(course.modules.length ? course.modules.map((m) => ({ title: m.title, lessons: m.lessons.length ? m.lessons.map((l) => ({ title: l.title, content: l.content, tamilMeaning: l.tamilMeaning, practiceType: l.practiceType })) : [emptyLesson()] })) : [emptyModule()]);
+    setModules(course.modules.length ? course.modules.map((m) => ({ title: m.title, lessons: m.lessons.length ? m.lessons.map((l) => ({ title: l.title, content: l.content, tamilMeaning: l.tamilMeaning, practiceType: l.practiceType, quizQuestions: l.quizQuestions?.length ? l.quizQuestions.map((q) => ({ question: q.question, options: [...q.options] as [string, string, string, string], correctAnswerIndex: q.correctAnswerIndex, explanationTamil: q.explanationTamil ?? "" })) : emptyLesson().quizQuestions })) : [emptyLesson()] })) : [emptyModule()]);
     setStatusMessage("Editing: " + course.title); setError("");
     document.getElementById("course-builder-form")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -75,7 +76,7 @@ export default function TeacherCourseBuilder({ apiBase }: Props) {
     event?.preventDefault(); setLoading(true); setError(""); setStatusMessage("");
     const cleanModules = modules.filter((m) => m.title.trim()).map((m) => ({
       title: m.title.trim(),
-      lessons: m.lessons.filter((l) => l.title.trim()).map((l) => ({ ...l, title: l.title.trim() })),
+      lessons: m.lessons.filter((l) => l.title.trim()).map((l) => ({ ...l, title: l.title.trim(), quizQuestions: l.practiceType === "quiz" ? l.quizQuestions.filter((q) => q.question.trim() && q.options.every((option) => option.trim())).map((q) => ({ ...q, question: q.question.trim(), options: q.options.map((option) => option.trim()) })) : [] })),
     }));
     const body = { title, description, learnerCategory, level, industry, goal, status, modules: cleanModules };
     try {
@@ -114,6 +115,15 @@ export default function TeacherCourseBuilder({ apiBase }: Props) {
             <label>Lesson content / example sentences<textarea rows={3} value={lesson.content} onChange={(e) => updateLesson(mi, li, { content: e.target.value })} placeholder="Add dialogue, useful phrases, examples, or instructions." /></label>
             <label>Tamil meaning / explanation<textarea rows={2} value={lesson.tamilMeaning} onChange={(e) => updateLesson(mi, li, { tamilMeaning: e.target.value })} placeholder="Tamil explanation for learners (optional)" /></label>
             <label>Practice activity<select value={lesson.practiceType} onChange={(e) => updateLesson(mi, li, { practiceType: e.target.value as PracticeType })}><option value="speaking">Speaking practice</option><option value="roleplay">Role-play conversation</option><option value="listening">Listening practice</option><option value="reading">Reading</option><option value="quiz">Quiz</option></select></label>
+            {lesson.practiceType === "quiz" && <div className="course-quiz-editor">
+              <strong>Quiz question (multiple choice)</strong>
+              {(lesson.quizQuestions.length ? lesson.quizQuestions : emptyLesson().quizQuestions).map((question, qi) => <div key={qi} className="course-quiz-question-editor">
+                <label>Question<input required minLength={3} value={question.question} onChange={(e) => updateLesson(mi, li, { quizQuestions: lesson.quizQuestions.map((q, index) => index === qi ? { ...q, question: e.target.value } : q) })} placeholder="e.g. Which sentence is correct?" /></label>
+                {question.options.map((option, oi) => <label key={oi}>Option {String.fromCharCode(65 + oi)}<input required value={option} onChange={(e) => updateLesson(mi, li, { quizQuestions: lesson.quizQuestions.map((q, index) => index === qi ? { ...q, options: q.options.map((value, optionIndex) => optionIndex === oi ? e.target.value : value) as [string, string, string, string] } : q) })} placeholder={"Answer option " + String.fromCharCode(65 + oi)} /></label>)}
+                <label>Correct answer<select value={question.correctAnswerIndex} onChange={(e) => updateLesson(mi, li, { quizQuestions: lesson.quizQuestions.map((q, index) => index === qi ? { ...q, correctAnswerIndex: Number(e.target.value) } : q) })}><option value={0}>Option A</option><option value={1}>Option B</option><option value={2}>Option C</option><option value={3}>Option D</option></select></label>
+                <label>Tamil explanation<textarea rows={2} value={question.explanationTamil} onChange={(e) => updateLesson(mi, li, { quizQuestions: lesson.quizQuestions.map((q, index) => index === qi ? { ...q, explanationTamil: e.target.value } : q) })} placeholder="Explain why the answer is correct in Tamil." /></label>
+              </div>)}
+            </div>}
           </div>)}
           <button type="button" className="button button-outline" onClick={() => updateModule(mi, { lessons: [...module.lessons, emptyLesson()] })}><Plus size={15} /> Add lesson</button>
         </section>)}
