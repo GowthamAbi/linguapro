@@ -219,6 +219,13 @@ function App() {
         if (user) {
           setAuthenticated(true);
           setProfile((current) => ({ ...current, ...user, role: user.role ?? "student" }));
+          const requestedRolePath = window.location.pathname;
+          if (["/owner", "/teacher", "/student"].includes(requestedRolePath)) {
+            const destination = user.role === "owner" ? "/owner" : user.role === "teacher" ? "/teacher" : "/student";
+            const destinationPage: Page = user.role === "owner" ? "owner" : user.role === "teacher" ? "teacher" : "dashboard";
+            if (requestedRolePath !== destination) window.history.replaceState({}, "", destination);
+            setPage(destinationPage);
+          }
           await loadServerProgress();
         }
       })
@@ -534,7 +541,9 @@ function App() {
               </tbody></table></div>
             </section>}
           </>}
-          {page === ("owner" as Page) && !isOwner && <section className="surface-card"><h3>Owner access only</h3><p>Sign in using the owner account configured for this site.</p></section>}
+          {page === ("owner" as Page) && !isOwner && <section className="surface-card"><h3>Owner access only</h3><p>Sign in using the owner account configured for this site.</p><button className="button button-primary" onClick={() => { setAuthMode("login"); setMessage(""); }}>Sign in as owner</button></section>}
+          {page === ("teacher" as Page) && !isTeacher && <section className="surface-card"><h3>Teacher access only</h3><p>Sign in with your teacher account to open the teacher workspace.</p><button className="button button-primary" onClick={() => { setAuthMode("login"); setMessage(""); }}>Sign in as teacher</button></section>}
+          {page === "dashboard" && authenticated && (isOwner || isTeacher) && <section className="surface-card"><h3>Open your workspace</h3><p>Your account has {isOwner ? "owner" : "teacher"} access.</p><button className="button button-primary" onClick={() => navigate(isOwner ? "owner" : "teacher")}>Go to {isOwner ? "Owner" : "Teacher"} dashboard</button></section>}
           {page === "dashboard" && <>
             <div className="page-heading">
               <div><div className="eyebrow">YOUR LEARNING SPACE</div><h1>Keep going, {profile.name || "learner"}! 👋</h1><p>A little practice every day makes a big difference.</p></div>
