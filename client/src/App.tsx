@@ -116,7 +116,7 @@ function App() {
   const [spokenTranscript, setSpokenTranscript] = useState("");
   const [coachCorrect, setCoachCorrect] = useState<boolean | null>(null);
   const [coachAttempts, setCoachAttempts] = useState(0);
-  const [authMode, setAuthMode] = useState<"login" | "register" | null>(null);
+  const [authMode, setAuthMode] = useState<"login" | "register" | null>(() => window.location.pathname === "/register" ? "register" : (window.location.pathname === "/login" || window.location.pathname.startsWith("/admin/") || window.location.pathname === "/owner") ? "login" : null);
   const [authName, setAuthName] = useState("");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
@@ -479,7 +479,7 @@ function App() {
       setAuthenticated(true);
       const signedInRole = payload.data?.user?.role ?? "student";
       setAuthMode(null);
-      if (signedInRole === "owner") { setOwnerSection("overview"); window.history.replaceState({}, "", "/admin/overview"); setPage("owner"); }
+      if (signedInRole === "owner") { const section = window.location.pathname.startsWith("/admin/") ? ownerSectionFromPath(window.location.pathname) : "overview"; setOwnerSection(section); if (!window.location.pathname.startsWith("/admin/")) window.history.replaceState({}, "", "/admin/overview"); setPage("owner"); }
       else if (signedInRole === "teacher") { window.history.replaceState({}, "", "/teacher"); setPage("teacher"); }
       else { window.history.replaceState({}, "", "/student"); setPage("dashboard"); }
       await loadServerProgress();
