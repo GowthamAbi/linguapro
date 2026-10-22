@@ -110,7 +110,7 @@ function App() {
   const ownerEmail = (import.meta.env.VITE_OWNER_EMAIL as string | undefined)?.trim().toLowerCase() ?? "";
   const isOwner = authenticated && (profile.role === "owner" || (!!ownerEmail && profile.email.trim().toLowerCase() === ownerEmail));
   const isTeacher = authenticated && profile.role === "teacher" && !isOwner;
-  const [ownerSection, setOwnerSection] = useState<"overview" | "users" | "students" | "teachers">("overview");
+  const [ownerSection, setOwnerSection] = useState("overview");
   const [ownerStats, setOwnerStats] = useState<{ totalUsers: number; premiumUsers: number; freeUsers: number; activeLearners: number; totalXp: number } | null>(null);
   const [ownerUsers, setOwnerUsers] = useState<Array<{ _id: string; name: string; email: string; role?: string; plan: string; targetLanguage: string; level: string; totalXp: number; currentStreak: number; createdAt: string }>>([]);
   const [ownerLoading, setOwnerLoading] = useState(false);
@@ -131,7 +131,7 @@ function App() {
   const [assignmentAnswers, setAssignmentAnswers] = useState<Record<string, string>>({});
   const [grading, setGrading] = useState<Record<string, { score: string; feedback: string }>>({});
 
-  async function loadOwnerData(section: "overview" | "users" | "students" | "teachers" = ownerSection) {
+  async function loadOwnerData(section: "overview" | "users" | "students" | "teachers" = (["overview", "users", "students", "teachers"].includes(ownerSection) ? ownerSection : "overview") as "overview" | "users" | "students" | "teachers") {
     if (!apiBase || !isOwner) return;
     setOwnerLoading(true); setOwnerError("");
     try {
@@ -478,21 +478,25 @@ function App() {
 
       <div className="app-layout">
         <aside className={"sidebar " + (menuOpen ? "sidebar-open" : "")}>
-          <div className="sidebar-caption">YOUR WORKSPACE</div>
+          <div className="sidebar-caption">{isOwner ? "OWNER CONSOLE" : isTeacher ? "TEACHER WORKSPACE" : "YOUR WORKSPACE"}</div>
           <nav className="sidebar-nav">
-            {navItems.map(({ id, label, icon: Icon }) => (
-              <button key={id} className={"nav-item " + (page === id ? "active" : "")} onClick={() => navigate(id)}>
-                <Icon size={18} /><span>{label}</span>{id === "dashboard" && <span className="nav-dot" />}
-              </button>
-            ))}
+            {isOwner ? [
+              { id: "overview", label: "Dashboard", icon: LayoutDashboard }, { id: "students", label: "Students", icon: GraduationCap },
+              { id: "teachers", label: "Teachers", icon: ShieldCheck }, { id: "admins", label: "Admins", icon: LockKeyhole },
+              { id: "users", label: "All users", icon: Users }, { id: "courses", label: "Courses", icon: BookOpen },
+              { id: "lessons", label: "Lessons", icon: ClipboardList }, { id: "assessments", label: "Assessments", icon: Check },
+              { id: "assignments", label: "Assignments", icon: Send }, { id: "certificates", label: "Certificates", icon: Star },
+              { id: "pricing", label: "Plans & pricing", icon: Crown }, { id: "subscriptions", label: "Subscriptions", icon: Star },
+              { id: "payments", label: "Payments", icon: TrendingUp }, { id: "invoices", label: "Invoices", icon: ClipboardList },
+              { id: "coupons", label: "Coupons & offers", icon: Sparkles }, { id: "categories", label: "Categories", icon: LayoutDashboard },
+              { id: "materials", label: "Learning materials", icon: BookOpen }, { id: "announcements", label: "Announcements", icon: Send },
+              { id: "settings", label: "Site settings", icon: Settings }, { id: "emails", label: "Email templates", icon: LogIn },
+              { id: "reports", label: "Reports & analytics", icon: TrendingUp },
+            ].map(({ id, label, icon: Icon }) => <button key={id} className={"nav-item " + (ownerSection === id ? "active" : "")} onClick={() => { setOwnerSection(id); if (["overview", "users", "students", "teachers"].includes(id)) void loadOwnerData(id as "overview" | "users" | "students" | "teachers"); }}><Icon size={17} /><span>{label}</span></button>)
+            : navItems.map(({ id, label, icon: Icon }) => <button key={id} className={"nav-item " + (page === id ? "active" : "")} onClick={() => navigate(id)}><Icon size={18} /><span>{label}</span>{id === "dashboard" && <span className="nav-dot" />}</button>)}
           </nav>
-          <div className="sidebar-premium">
-            <div className="premium-icon"><Crown size={20} /></div>
-            <strong>Unlock your potential</strong>
-            <p>Get more lessons and guided practice with Premium.</p>
-            <button className="button button-light" onClick={() => navigate("plans")}>Explore plans <ChevronRight size={15} /></button>
-          </div>
-          <div className="sidebar-foot">LinguaPro · Learn every day</div>
+          {!isOwner && <div className="sidebar-premium"><div className="premium-icon"><Crown size={20} /></div><strong>Unlock your potential</strong><p>Get more lessons and guided practice with Premium.</p><button className="button button-light" onClick={() => navigate("plans")}>Explore plans <ChevronRight size={15} /></button></div>}
+          <div className="sidebar-foot">LinguaPro · {isOwner ? "Platform administration" : "Learn every day"}</div>
         </aside>
 
         <main className="page-content">
@@ -515,7 +519,7 @@ function App() {
           </>}
           {page === ("teacher" as Page) && !isTeacher && <section className="surface-card"><h3>Teacher access only</h3><p>Sign in using a teacher account created by the owner.</p></section>}
           {page === ("owner" as Page) && isOwner && <>
-            <PageTitle eyebrow="LINGUAPRO ADMINISTRATION" title="Owner dashboard" subtitle="Manage registered accounts and active learning customers separately." />
+            <PageTitle eyebrow="LINGUAPRO ADMINISTRATION" title={ownerSection === "overview" ? "Owner dashboard" : ({ students: "Students", teachers: "Teachers", admins: "Admins", users: "All users", courses: "Courses", lessons: "Lessons", assessments: "Assessments", assignments: "Assignments", certificates: "Certificates", pricing: "Plans & pricing", subscriptions: "Subscriptions", payments: "Payments", invoices: "Invoices", coupons: "Coupons & offers", categories: "Categories", materials: "Learning materials", announcements: "Announcements", settings: "Site settings", emails: "Email templates", reports: "Reports & analytics" } as Record<string, string>)[ownerSection] ?? "Owner dashboard"} subtitle={ownerSection === "overview" ? "Manage your LinguaPro platform from one place." : "Manage and review this part of your LinguaPro platform."} />
             <div className="owner-tabs">
               <button className={ownerSection === "overview" ? "owner-tab active" : "owner-tab"} onClick={() => { setOwnerSection("overview"); void loadOwnerData("overview"); }}><LayoutDashboard size={16} /> Overview</button>
               <button className={ownerSection === "users" ? "owner-tab active" : "owner-tab"} onClick={() => { setOwnerSection("users"); void loadOwnerData("users"); }}><Users size={16} /> All users</button>
