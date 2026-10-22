@@ -8,7 +8,8 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
-    "seed:student-courses": "tsx src/scripts/seedStudentCourses.ts"
+    "seed:student-courses": "tsx src/scripts/seedStudentCourses.ts",
+    "activate:premium": "tsx src/scripts/activatePremiumAccount.ts"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
