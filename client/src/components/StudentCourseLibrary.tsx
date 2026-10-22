@@ -41,6 +41,7 @@ export default function StudentCourseLibrary({ apiBase, authToken = "", initialL
   const [quizResults, setQuizResults] = useState<Record<string, QuizResult>>({});
   const [quizMessages, setQuizMessages] = useState<Record<string, string>>({});
   const [practiceHistory, setPracticeHistory] = useState<{ _id: string; courseTitle: string; lessonTitle: string; response: string; practiceType: Lesson["practiceType"]; submittedAt: string }[]>([]);
+  const [quizHistory, setQuizHistory] = useState<{ _id: string; courseTitle: string; lessonTitle: string; score: number; total: number; percentage: number; submittedAt: string }[]>([]);
 
   function authHeaders(extra?: HeadersInit): Headers { const headers = new Headers(extra); if (authToken) headers.set("Authorization", "Bearer " + authToken); return headers; }
 
@@ -59,6 +60,9 @@ export default function StudentCourseLibrary({ apiBase, authToken = "", initialL
       const historyResponse = await fetch(apiBase + "/student-courses/practice-history", { credentials: "include", headers: authHeaders() });
       const historyPayload = await historyResponse.json() as { data?: { entries: typeof practiceHistory } };
       if (historyResponse.ok) setPracticeHistory(historyPayload.data?.entries ?? []);
+      const quizHistoryResponse = await fetch(apiBase + "/student-courses/quiz-history", { credentials: "include", headers: authHeaders() });
+      const quizHistoryPayload = await quizHistoryResponse.json() as { data?: { entries: typeof quizHistory } };
+      if (quizHistoryResponse.ok) setQuizHistory(quizHistoryPayload.data?.entries ?? []);
     } catch (err) { setError(err instanceof Error ? err.message : "Could not load courses."); }
     finally { setLoading(false); }
   }
@@ -105,6 +109,9 @@ export default function StudentCourseLibrary({ apiBase, authToken = "", initialL
       if (!response.ok || !payload.data) throw new Error(payload.message ?? "Could not check quiz answers.");
       setQuizResults((old) => ({ ...old, [lesson._id]: payload.data as QuizResult }));
       setQuizMessages((old) => ({ ...old, [lesson._id]: "Quiz checked. Review each answer and the Tamil explanation below." }));
+      const historyResponse = await fetch(apiBase + "/student-courses/quiz-history", { credentials: "include", headers: authHeaders() });
+      const historyPayload = await historyResponse.json() as { data?: { entries: typeof quizHistory } };
+      if (historyResponse.ok) setQuizHistory(historyPayload.data?.entries ?? []);
     } catch (err) {
       setQuizMessages((old) => ({ ...old, [lesson._id]: err instanceof Error ? err.message : "Could not check quiz answers." }));
     }
@@ -163,6 +170,15 @@ export default function StudentCourseLibrary({ apiBase, authToken = "", initialL
           <div className="student-practice-history-meta"><strong>{entry.lessonTitle}</strong><span className="tag">{practiceLabels[entry.practiceType]}</span></div>
           <p>{entry.response}</p>
           <small>{entry.courseTitle} · {new Date(entry.submittedAt).toLocaleString()}</small>
+        </article>)}
+      </div>}
+    </section>
+    <section className="surface-card student-practice-history">
+      <div className="card-heading"><div><span className="course-builder-eyebrow">YOUR QUIZ PROGRESS</span><h3>Quiz score history</h3><p>Your latest quiz attempts and scores are saved to your account.</p></div><span className="tag">{quizHistory.length} attempts</span></div>
+      {quizHistory.length === 0 ? <p className="muted-small">Complete and submit a quiz to see your score history here.</p> : <div className="student-practice-history-list">
+        {quizHistory.slice(0, 8).map((attempt) => <article className="student-practice-history-entry" key={attempt._id}>
+          <div className="student-practice-history-meta"><strong>{attempt.lessonTitle}</strong><span className="tag">{attempt.score}/{attempt.total} · {attempt.percentage}%</span></div>
+          <p>{attempt.courseTitle}</p><small>{new Date(attempt.submittedAt).toLocaleString()}</small>
         </article>)}
       </div>}
     </section>
