@@ -21,7 +21,7 @@ const practiceLabels: Record<Lesson["practiceType"], string> = {
   reading: "Reading", speaking: "Speaking", listening: "Listening", quiz: "Quiz", roleplay: "Role-play",
 };
 
-export default function StudentCourseLibrary({ apiBase }: { apiBase: string }) {
+export default function StudentCourseLibrary({ apiBase, authToken = "" }: { apiBase: string; authToken?: string }) {
   const [courses, setCourses] = useState<Course[]>([]);
   const [category, setCategory] = useState("all");
   const [level, setLevel] = useState("all");
@@ -32,28 +32,30 @@ export default function StudentCourseLibrary({ apiBase }: { apiBase: string }) {
   const [progressMessage, setProgressMessage] = useState("");
   const [xpHistory, setXpHistory] = useState<{ totalXp: number; weekly: { date: string; day: string; xp: number }[]; events: { _id: string; label: string; xpEarned: number; earnedOn: string }[] } | null>(null);
 
+  function authHeaders(extra?: HeadersInit): Headers { const headers = new Headers(extra); if (authToken) headers.set("Authorization", "Bearer " + authToken); return headers; }
+
   async function loadCourses() {
     if (!apiBase) { setError("Course library needs the backend API. Set VITE_API_URL in Netlify."); return; }
     setLoading(true); setError("");
     try {
-      const response = await fetch(apiBase + "/student-courses", { credentials: "include" });
+      const response = await fetch(apiBase + "/student-courses", { credentials: "include", headers: authHeaders() });
       const payload = await response.json() as { message?: string; data?: { courses: Course[]; progress?: Record<string, { completedLessonIds: string[]; completedAt?: string | null }> } };
       if (!response.ok) throw new Error(payload.message ?? "Could not load published courses.");
       setCourses(payload.data?.courses ?? []);
       setProgress(payload.data?.progress ?? {});
-      const xpResponse = await fetch(apiBase + "/student-courses/xp-history", { credentials: "include" });
+      const xpResponse = await fetch(apiBase + "/student-courses/xp-history", { credentials: "include", headers: authHeaders() });
       const xpPayload = await xpResponse.json() as { data?: { totalXp: number; weekly: { date: string; day: string; xp: number }[]; events: { _id: string; label: string; xpEarned: number; earnedOn: string }[] } };
       if (xpResponse.ok) setXpHistory(xpPayload.data ?? null);
     } catch (err) { setError(err instanceof Error ? err.message : "Could not load courses."); }
     finally { setLoading(false); }
   }
-  useEffect(() => { void loadCourses(); }, [apiBase]);
+  useEffect(() => { void loadCourses(); }, [apiBase, authToken]);
 
   async function completeLesson(courseId: string, lessonId: string) {
     setProgressMessage("");
     try {
       const response = await fetch(apiBase + "/student-courses/" + courseId + "/lessons/" + lessonId + "/complete", {
-        method: "POST", credentials: "include", headers: { "Content-Type": "application/json" },
+        method: "POST", credentials: "include", headers: authHeaders({ "Content-Type": "application/json" }),
       });
       const payload = await response.json() as { message?: string; data?: { completedLessonIds: string[]; courseCompleted: boolean; xpEarned?: number; totalXp?: number } };
       if (!response.ok) throw new Error(payload.message ?? "Could not save lesson progress.");
