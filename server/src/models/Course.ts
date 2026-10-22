@@ -5,6 +5,7 @@ const lessonSchema = new Schema({
   content: { type: String, default: "", maxlength: 5000 },
   tamilMeaning: { type: String, default: "", maxlength: 3000 },
   practiceType: { type: String, enum: ["reading", "speaking", "listening", "quiz", "roleplay"], default: "speaking" },
+  quizQuestions: { type: [{ question: { type: String, required: true, maxlength: 500 }, options: { type: [String], required: true, validate: (v: string[]) => v.length === 4 }, correctAnswerIndex: { type: Number, required: true, min: 0, max: 3 }, explanationTamil: { type: String, default: "", maxlength: 1000 } }], default: [] },
 }, { _id: true });
 
 const moduleSchema = new Schema({
