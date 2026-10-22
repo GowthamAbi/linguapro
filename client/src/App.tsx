@@ -50,8 +50,18 @@ function readStored<T>(key: string, fallback: T): T {
   }
 }
 
+function pageFromPath(pathname: string): Page {
+  const path = pathname.replace(/\\/+$/, "") || "/";
+  if (path === "/owner") return "owner";
+  if (path === "/teacher") return "teacher";
+  if (path === "/student" || path === "/") return "dashboard";
+  const allowed: Page[] = ["dashboard", "courses", "speaking", "vocabulary", "progress", "profile", "plans", "assignments"];
+  const candidate = path.slice(1) as Page;
+  return allowed.includes(candidate) ? candidate : "dashboard";
+}
+
 function App() {
-  const [page, setPage] = useState<Page>("dashboard");
+  const [page, setPage] = useState<Page>(() => pageFromPath(window.location.pathname));
   const [menuOpen, setMenuOpen] = useState(false);
   const [profile, setProfile] = useState<UserProfile>(() => readStored("linguapro-profile", defaultProfile));
   const [tasks, setTasks] = useState<LearningTask[]>(() => {
@@ -98,7 +108,7 @@ function App() {
 
   const apiBase = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "") ?? "";
   const ownerEmail = (import.meta.env.VITE_OWNER_EMAIL as string | undefined)?.trim().toLowerCase() ?? "";
-  const isOwner = authenticated && !!ownerEmail && profile.email.trim().toLowerCase() === ownerEmail;
+  const isOwner = authenticated && (profile.role === "owner" || (!!ownerEmail && profile.email.trim().toLowerCase() === ownerEmail));
   const isTeacher = authenticated && profile.role === "teacher" && !isOwner;
   const [ownerSection, setOwnerSection] = useState<"overview" | "users" | "students" | "teachers">("overview");
   const [ownerStats, setOwnerStats] = useState<{ totalUsers: number; premiumUsers: number; freeUsers: number; activeLearners: number; totalXp: number } | null>(null);
@@ -194,11 +204,17 @@ function App() {
   }
 
   useEffect(() => {
+    const onPopState = () => setPage(pageFromPath(window.location.pathname));
+    window.addEventListener("popstate", onPopState);
+    return () => window.removeEventListener("popstate", onPopState);
+  }, []);
+
+  useEffect(() => {
     if (!apiBase) return;
     fetch(apiBase + "/auth/me", { credentials: "include" })
       .then(async (response) => {
         if (!response.ok) return;
-        const payload = await response.json() as { data?: { user?: { name?: string; email?: string; nativeLanguage?: string; targetLanguage?: string; level?: LearningLevel; plan?: "Free" | "Premium"; role?: "student" | "teacher" } } };
+        const payload = await response.json() as { data?: { user?: { name?: string; email?: string; nativeLanguage?: string; targetLanguage?: string; level?: LearningLevel; plan?: "Free" | "Premium"; role?: "student" | "teacher" | "owner" } } };
         const user = payload.data?.user;
         if (user) {
           setAuthenticated(true);
@@ -213,6 +229,8 @@ function App() {
   const phrase = phrases[phraseIndex];
 
   function navigate(next: Page) {
+    const path = next === "owner" || next === "teacher" ? "/" + next : next === "dashboard" ? "/student" : "/" + next;
+    if (window.location.pathname !== path) window.history.pushState({}, "", path);
     setPage(next);
     setMenuOpen(false);
     setMessage("");
@@ -419,14 +437,18 @@ function App() {
           ? { name: authName, email: authEmail, password: authPassword }
           : { email: authEmail, password: authPassword }),
       });
-      const payload = await response.json() as { message?: string; data?: { user?: { name?: string; email?: string; role?: "student" | "teacher" } } };
+      const payload = await response.json() as { message?: string; data?: { user?: { name?: string; email?: string; role?: "student" | "teacher" | "owner" } } };
       if (!response.ok) throw new Error(payload.message ?? "Unable to sign in.");
       if (payload.data?.user?.name) saveProfile("name", payload.data.user.name);
       if (payload.data?.user?.email) saveProfile("email", payload.data.user.email);
       if (payload.data?.user?.role) saveProfile("role", payload.data.user.role);
       setAuthenticated(true);
-      await loadServerProgress();
+      const signedInRole = payload.data?.user?.role ?? "student";
       setAuthMode(null);
+      if (signedInRole === "owner") { setOwnerSection("overview"); window.history.replaceState({}, "", "/owner"); setPage("owner"); }
+      else if (signedInRole === "teacher") { window.history.replaceState({}, "", "/teacher"); setPage("teacher"); }
+      else { window.history.replaceState({}, "", "/student"); setPage("dashboard"); }
+      await loadServerProgress();
       setMessage("You are signed in.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to sign in.");
