@@ -88,9 +88,20 @@ export async function login(request: Request, response: Response): Promise<void>
     return;
   }
 
-  const user = await User.findOne({ email }).select("+passwordHash");
+  const ownerEmail = process.env.OWNER_EMAIL?.trim().toLowerCase();
+  const ownerPassword = process.env.OWNER_PASSWORD;
+  const ownerLogin = Boolean(ownerEmail && ownerPassword && email === ownerEmail && parsed.data.password === ownerPassword);
+  let user = await User.findOne({ email }).select("+passwordHash");
 
-  if (!user || !(await bcrypt.compare(parsed.data.password, String(user.passwordHash)))) {
+  if (ownerLogin && !user) {
+    user = await User.create({
+      name: "LinguaPro Owner",
+      email,
+      passwordHash: await bcrypt.hash(ownerPassword as string, 12),
+    });
+  }
+
+  if (!user || (!ownerLogin && !(await bcrypt.compare(parsed.data.password, String(user.passwordHash))))) {
     response.status(401).json({ message: "Email or password is incorrect." });
     return;
   }
