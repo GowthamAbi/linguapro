@@ -122,6 +122,48 @@ export async function completeStudentLesson(request: AuthenticatedRequest, respo
 }
 
 
+
+export async function saveStudentPractice(request: AuthenticatedRequest, response: Response): Promise<void> {
+  const courseId = String(request.params.courseId);
+  const lessonId = String(request.params.lessonId);
+  if (!mongoose.isValidObjectId(courseId) || !mongoose.isValidObjectId(lessonId)) {
+    response.status(400).json({ message: "Invalid course or lesson ID." });
+    return;
+  }
+  const parsed = z.object({
+    response: z.string().trim().min(8, "Write at least one complete sentence.").max(5000),
+  }).safeParse(request.body);
+  if (!parsed.success) {
+    response.status(400).json({ message: parsed.error.issues[0]?.message ?? "Check your practice answer." });
+    return;
+  }
+  const course = await Course.findOne({ _id: courseId, status: "published" }).select("modules");
+  if (!course) {
+    response.status(404).json({ message: "Published course not found." });
+    return;
+  }
+  const lesson = course.modules.flatMap((module) => module.lessons).find((item) => String(item._id) === lessonId);
+  if (!lesson) {
+    response.status(404).json({ message: "Lesson not found in this course." });
+    return;
+  }
+  const enrollment = await CourseEnrollment.findOneAndUpdate(
+    { studentId: request.userId, courseId },
+    { $push: { practiceResponses: { lessonId, response: parsed.data.response, practiceType: lesson.practiceType, submittedAt: new Date() } } },
+    { new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true },
+  );
+  response.status(201).json({
+    message: "Practice answer saved.",
+    data: {
+      lessonId,
+      response: parsed.data.response,
+      practiceType: lesson.practiceType,
+      submittedAt: enrollment.practiceResponses[enrollment.practiceResponses.length - 1]?.submittedAt,
+    },
+  });
+}
+
+
 export async function getTeacherCourseProgress(request: AuthenticatedRequest, response: Response): Promise<void> {
   const courses = await Course.find({ teacherId: request.userId })
     .select("title status modules")
