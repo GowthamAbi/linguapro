@@ -429,7 +429,7 @@ input, select { width: 100%; min-height: 42px; padding: 10px 11px; border: 1px s
 @media(max-width:430px){.student-learning-hero-art{display:none}.student-learning-hero{padding:20px}.student-learning-hero h2{font-size:26px}}
 
 /* Interactive English level selector */
-.student-learning-levels .student-level-button{display:flex;align-items:center;gap:12px;width:100%;text-align:left;color:inherit;font:inherit;cursor:pointer;transition:border-color .18s,box-shadow .18s,transform .18s}
+.student-learning-levels .student-level-button{display:flex;align-items:center;gap:12px;width:100%;padding:14px;border:1px solid var(--line);border-radius:15px;background:#fff;text-align:left;color:inherit;font:inherit;cursor:pointer;transition:border-color .18s,box-shadow .18s,transform .18s}
 .student-learning-levels .student-level-button:hover,.student-learning-levels .student-level-button.selected{border-color:#8b5cf6;box-shadow:0 0 0 3px #8b5cf61a;transform:translateY(-1px)}
 .student-learning-levels .student-level-button>div{display:grid;gap:4px;flex:1;min-width:0}
 .student-learning-levels .student-level-button>small{font-size:10px;color:var(--muted);white-space:nowrap}
