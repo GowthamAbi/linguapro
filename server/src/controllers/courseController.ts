@@ -73,9 +73,9 @@ async function ensureStarterEnglishCourse(): Promise<void> {
   const existing = await Course.findOne({ status: "published", title: "Basic English Speaking — Start Here" }).select("_id").lean();
   if (existing) return;
 
-  let teacher = await User.findOne({ email: starterTeacherEmail }).select("_id").lean();
-  if (!teacher) {
-    const [createdTeacher] = await User.create([{
+  let teacherId = (await User.findOne({ email: starterTeacherEmail }).select("_id").lean())?._id;
+  if (!teacherId) {
+    const createdTeacher = await User.create({
       name: "LinguaPro Learning Team",
       email: starterTeacherEmail,
       passwordHash: "system-seeded-account-login-disabled",
@@ -84,12 +84,12 @@ async function ensureStarterEnglishCourse(): Promise<void> {
       targetLanguage: "English",
       level: "Basic",
       plan: "Free",
-    }]);
-    teacher = { _id: createdTeacher._id };
+    });
+    teacherId = createdTeacher._id;
   }
 
   await Course.create({
-    teacherId: teacher._id,
+    teacherId,
     title: "Basic English Speaking — Start Here",
     description: "A beginner-friendly English course with Tamil meanings, everyday sentences, speaking tasks and short quizzes.",
     learnerCategory: "adults",
