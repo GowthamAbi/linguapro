@@ -169,11 +169,28 @@ export default function StudentCourseLibrary({ apiBase, authToken = "", initialL
     (level === "all" || course.level === level)
   ), [courses, category, level]);
 
+  const dailyTasks = useMemo(() => visibleCourses.flatMap((course) =>
+    course.modules.flatMap((module) => module.lessons.map((lesson) => ({
+      course,
+      module,
+      lesson,
+      completed: (progress[course._id]?.completedLessonIds ?? []).includes(lesson._id),
+    })))
+  ).filter((task) => !task.completed).slice(0, 3), [visibleCourses, progress]);
+
   return <section className="student-course-library">
     <div className="section-heading">
       <div><h2>Courses from your teachers</h2><p>Choose a course, study each lesson, and practise with Tamil explanations.</p></div>
       <button className="button button-outline" onClick={() => void loadCourses()} disabled={loading}><RefreshCw size={15} /> Refresh</button>
     </div>
+    <section className="surface-card student-daily-tasks">
+      <div className="card-heading"><div><span className="course-builder-eyebrow">YOUR NEXT STEPS</span><h3>Today's Study Tasks</h3><p>Complete these lessons to practise English and earn XP.</p></div><span className="student-task-count">{dailyTasks.length} left</span></div>
+      {dailyTasks.length ? <div className="student-task-list">{dailyTasks.map((task, index) => <article className="student-task-row" key={task.course._id + ":" + task.lesson._id}>
+        <span className="student-task-number">{index + 1}</span>
+        <div className="student-task-copy"><strong>{task.lesson.title}</strong><small>{task.course.title} · {task.module.title}</small><span>{practiceLabels[task.lesson.practiceType]} · Earn 10 XP</span></div>
+        <button type="button" className="button button-primary" onClick={() => { setExpanded(task.course._id); setOpenPractice(task.lesson._id); setPracticeFeedback((old) => ({ ...old, [task.lesson._id]: "" })); }}>Start</button>
+      </article>)}</div> : <div className="student-tasks-complete"><strong>🎉 You're all caught up!</strong><p>No unfinished lessons in this course filter. Choose another level or check your courses below.</p></div>}
+    </section>
     <section className="surface-card student-xp-panel">
       <div className="card-heading"><div><span className="course-builder-eyebrow">YOUR LEARNING MOMENTUM</span><h3>XP history &amp; weekly progress</h3><p>Your recent XP rewards and activity from the last 7 days.</p></div><div className="student-xp-total"><strong>{xpHistory?.totalXp ?? 0}</strong><span>Total XP</span></div></div>
       <div className="student-daily-goal-grid">
