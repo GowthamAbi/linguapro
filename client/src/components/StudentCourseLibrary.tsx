@@ -175,6 +175,14 @@ export default function StudentCourseLibrary({ apiBase, authToken = "", initialL
     </section>
     <section className="surface-card student-practice-history">
       <div className="card-heading"><div><span className="course-builder-eyebrow">YOUR QUIZ PROGRESS</span><h3>Quiz score history</h3><p>Your latest quiz attempts and scores are saved to your account.</p></div><span className="tag">{quizHistory.length} attempts</span></div>
+      {quizHistory.length > 0 && <div className="student-quiz-progress-chart" role="img" aria-label="Recent quiz scores as percentages">
+        <div className="student-quiz-chart-heading"><strong>Recent score trend</strong><span>Score out of 100%</span></div>
+        <div className="student-quiz-chart-bars">{quizHistory.slice(0, 7).slice().reverse().map((attempt, index) => <div className="student-quiz-chart-bar" key={attempt._id} title={attempt.lessonTitle + ": " + attempt.percentage + "%"}>
+          <strong>{attempt.percentage}%</strong><div className="student-quiz-chart-track"><span style={{ height: attempt.percentage + "%" }} /></div><small>{index + 1}</small>
+        </div>)}</div>
+        <p className="muted-small">Bars are shown from oldest to newest among your latest seven attempts. Use the scores below to identify lessons to practise again.</p>
+      </div>}
+      {quizHistory.length > 0 && <div className="student-quiz-review-focus"><strong>Lessons to review</strong>{[...quizHistory].sort((a, b) => a.percentage - b.percentage).slice(0, 3).map((attempt) => <div className="student-quiz-review-row" key={attempt._id}><span>{attempt.lessonTitle}</span><span className="tag">{attempt.percentage}%</span></div>)}</div>}
       {quizHistory.length === 0 ? <p className="muted-small">Complete and submit a quiz to see your score history here.</p> : <div className="student-practice-history-list">
         {quizHistory.slice(0, 8).map((attempt) => <article className="student-practice-history-entry" key={attempt._id}>
           <div className="student-practice-history-meta"><strong>{attempt.lessonTitle}</strong><span className="tag">{attempt.score}/{attempt.total} · {attempt.percentage}%</span></div>
