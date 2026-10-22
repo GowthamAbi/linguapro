@@ -520,11 +520,11 @@ function App() {
           {page === ("teacher" as Page) && !isTeacher && <section className="surface-card"><h3>Teacher access only</h3><p>Sign in using a teacher account created by the owner.</p></section>}
           {page === ("owner" as Page) && isOwner && <>
             <PageTitle eyebrow="LINGUAPRO ADMINISTRATION" title={ownerSection === "overview" ? "Owner dashboard" : ({ students: "Students", teachers: "Teachers", admins: "Admins", users: "All users", courses: "Courses", lessons: "Lessons", assessments: "Assessments", assignments: "Assignments", certificates: "Certificates", pricing: "Plans & pricing", subscriptions: "Subscriptions", payments: "Payments", invoices: "Invoices", coupons: "Coupons & offers", categories: "Categories", materials: "Learning materials", announcements: "Announcements", settings: "Site settings", emails: "Email templates", reports: "Reports & analytics" } as Record<string, string>)[ownerSection] ?? "Owner dashboard"} subtitle={ownerSection === "overview" ? "Manage your LinguaPro platform from one place." : "Manage and review this part of your LinguaPro platform."} />
-            {ownerSection === "overview" && <div className="owner-tabs">
+            <div className="owner-tabs">
               <button className={ownerSection === "overview" ? "owner-tab active" : "owner-tab"} onClick={() => { setOwnerSection("overview"); void loadOwnerData("overview"); }}><LayoutDashboard size={16} /> Overview</button>
               <button className={ownerSection === "users" ? "owner-tab active" : "owner-tab"} onClick={() => { setOwnerSection("users"); void loadOwnerData("users"); }}><Users size={16} /> All users</button>
               <button className={ownerSection === "students" ? "owner-tab active" : "owner-tab"} onClick={() => { setOwnerSection("students"); void loadOwnerData("students"); }}><GraduationCap size={16} /> Students / customers</button><button className={ownerSection === "teachers" ? "owner-tab active" : "owner-tab"} onClick={() => { setOwnerSection("teachers"); void loadOwnerData("teachers"); }}><ShieldCheck size={16} /> Teachers</button>
-            </div>}
+            </div>
             {ownerLoading && <div className="inline-message">Loading owner data…</div>}
             {ownerError && <div className="inline-message">{ownerError}</div>}
             {ownerSection === "overview" && ownerStats && <div className="owner-stats-grid">
