@@ -3,7 +3,13 @@
   "version": "1.0.0",
   "private": true,
   "main": "dist/server.js",
-  "scripts": { "dev": "tsx watch src/server.ts", "build": "tsc", "start": "node dist/server.js", "typecheck": "tsc --noEmit" },
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit",
+    "seed:student-courses": "tsx src/scripts/seedStudentCourses.ts"
+  },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.7",
