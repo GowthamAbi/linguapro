@@ -69,45 +69,32 @@ export async function login(request: Request, response: Response): Promise<void>
   const email = parsed.data.email.toLowerCase();
   const ownerEmail = process.env.OWNER_EMAIL?.trim().toLowerCase();
   const ownerPassword = process.env.OWNER_PASSWORD;
+  const ownerLogin = Boolean(
+    ownerEmail &&
+    ownerPassword &&
+    email === ownerEmail &&
+    parsed.data.password === ownerPassword
+  );
 
-  // The Render owner credentials are the recovery/bootstrap source of truth.
-  // On a matching owner login, create the account if missing or sync its password
-  // hash so the configured OWNER_PASSWORD works even when MongoDB has stale credentials.
-  if (ownerEmail && ownerPassword && email === ownerEmail && parsed.data.password === ownerPassword) {
-    const passwordHash = await bcrypt.hash(ownerPassword, 12);
-    let owner = await User.findOne({ email }).select("+passwordHash");
-    if (!owner) {
-      owner = await User.create({ name: "LinguaPro Owner", email, passwordHash });
-    } else if (!(await bcrypt.compare(ownerPassword, String(owner.passwordHash)))) {
-      owner.passwordHash = passwordHash;
-      await owner.save();
-    }
-
-    setSessionCookie(response, createSessionToken(owner.id));
-    response.json({ message: "Owner signed in successfully.", data: { user: owner.toJSON() } });
-    return;
-  }
-
-  const ownerEmail = process.env.OWNER_EMAIL?.trim().toLowerCase();
-  const ownerPassword = process.env.OWNER_PASSWORD;
-  const ownerLogin = Boolean(ownerEmail && ownerPassword && email === ownerEmail && parsed.data.password === ownerPassword);
   let user = await User.findOne({ email }).select("+passwordHash");
 
-  if (ownerLogin && !user) {
-    user = await User.create({
-      name: "LinguaPro Owner",
-      email,
-      passwordHash: await bcrypt.hash(ownerPassword as string, 12),
-    });
+  if (ownerLogin) {
+    const passwordHash = await bcrypt.hash(ownerPassword as string, 12);
+    if (!user) {
+      user = await User.create({ name: "LinguaPro Owner", email, passwordHash });
+    } else if (!(await bcrypt.compare(ownerPassword as string, String(user.passwordHash)))) {
+      user.passwordHash = passwordHash;
+      await user.save();
+    }
   }
 
-  if (!user || (!ownerLogin && !(await bcrypt.compare(parsed.data.password, String(user.passwordHash))))) {
+  if (!user || (!ownerLogin && !(await bcrypt.compare(parsed.data.password, String(user.passwordHash)))) ) {
     response.status(401).json({ message: "Email or password is incorrect." });
     return;
   }
 
   setSessionCookie(response, createSessionToken(user.id));
-  response.json({ message: "Signed in successfully.", data: { user: user.toJSON() } });
+  response.json({ message: ownerLogin ? "Owner signed in successfully." : "Signed in successfully.", data: { user: user.toJSON() } });
 }
 
 export function logout(_request: Request, response: Response): void {
