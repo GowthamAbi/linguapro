@@ -117,7 +117,7 @@ function App() {
   const isOwner = authenticated && (profile.role === "owner" || (!!ownerEmail && profile.email.trim().toLowerCase() === ownerEmail));
   const isTeacher = authenticated && profile.role === "teacher" && !isOwner;
   const [ownerSection, setOwnerSection] = useState("overview");
-  const [ownerStats, setOwnerStats] = useState<{ totalUsers: number; premiumUsers: number; freeUsers: number; activeLearners: number; totalXp: number } | null>(null);
+  const [ownerStats, setOwnerStats] = useState<{ totalUsers: number; totalTeachers: number; totalCourses: number; premiumUsers: number; freeUsers: number; activeLearners: number; totalXp: number } | null>(null);
   const [ownerUsers, setOwnerUsers] = useState<Array<{ _id: string; name: string; email: string; role?: string; plan: string; targetLanguage: string; level: string; totalXp: number; currentStreak: number; createdAt: string }>>([]);
   const [ownerLoading, setOwnerLoading] = useState(false);
   const [teacherName, setTeacherName] = useState("");
@@ -143,7 +143,7 @@ function App() {
     try {
       if (section === "overview") {
         const response = await apiFetch(apiBase + "/admin/overview", { credentials: "include" });
-        const payload = await response.json() as { message?: string; data?: { totalUsers: number; premiumUsers: number; freeUsers: number; activeLearners: number; totalXp: number } };
+        const payload = await response.json() as { message?: string; data?: { totalUsers: number; totalTeachers: number; totalCourses: number; premiumUsers: number; freeUsers: number; activeLearners: number; totalXp: number } };
         if (!response.ok || !payload.data) throw new Error(payload.message ?? "Could not load owner overview.");
         setOwnerStats(payload.data);
       } else if (section === "teachers") {
@@ -534,15 +534,31 @@ function App() {
             </div>
             {ownerLoading && <div className="inline-message">Loading owner data…</div>}
             {ownerError && <div className="inline-message">{ownerError}</div>}
-            {ownerSection === "overview" && ownerStats && <div className="owner-stats-grid">
-              <StatCard icon={<Users />} label="Total registered users" value={String(ownerStats.totalUsers)} detail="All accounts" />
-              <StatCard icon={<GraduationCap />} label="Active learners" value={String(ownerStats.activeLearners)} detail="Users with earned XP" />
-              <StatCard icon={<Crown />} label="Premium users" value={String(ownerStats.premiumUsers)} detail="Premium plan accounts" />
-              <StatCard icon={<UserRound />} label="Free users" value={String(ownerStats.freeUsers)} detail="Free plan accounts" />
-              <StatCard icon={<Star />} label="Total XP earned" value={String(ownerStats.totalXp)} detail="Across all users" />
-              <button className="owner-jump-card" onClick={() => { setOwnerSection("users"); void loadOwnerData("users"); }}><Users /><strong>Manage all users</strong><span>View every registered account</span><ChevronRight /></button>
-              <button className="owner-jump-card" onClick={() => { setOwnerSection("students"); void loadOwnerData("students"); }}><GraduationCap /><strong>Student / customer list</strong><span>Users who have started learning</span><ChevronRight /></button>
-            </div>}
+            {ownerSection === "overview" && ownerStats && <>
+              <div className="owner-overview-stats">
+                <StatCard icon={<Users />} label="Total users" value={String(ownerStats.totalUsers)} detail="Registered accounts" />
+                <StatCard icon={<GraduationCap />} label="Total teachers" value={String(ownerStats.totalTeachers)} detail="Teacher accounts" />
+                <StatCard icon={<BookOpen />} label="Published courses" value={String(ownerStats.totalCourses)} detail="Available to students" />
+                <StatCard icon={<TrendingUp />} label="Total XP earned" value={Number(ownerStats.totalXp).toLocaleString()} detail="Learning activity" />
+              </div>
+              <div className="owner-overview-panels">
+                <section className="surface-card owner-analytics-card">
+                  <div className="card-heading"><div><h3>Platform overview</h3><p>Live account and learning metrics from your database.</p></div><span className="owner-live-pill"><i /> Live data</span></div>
+                  <div className="owner-metric-list">
+                    <div><span className="owner-metric-icon purple"><Users size={17}/></span><span><strong>Registered users</strong><small>All roles combined</small></span><b>{ownerStats.totalUsers}</b></div>
+                    <div><span className="owner-metric-icon blue"><GraduationCap size={17}/></span><span><strong>Active learners</strong><small>Users with XP recorded</small></span><b>{ownerStats.activeLearners}</b></div>
+                    <div><span className="owner-metric-icon green"><BookOpen size={17}/></span><span><strong>Published courses</strong><small>Visible in the student library</small></span><b>{ownerStats.totalCourses}</b></div>
+                  </div>
+                  <div className="owner-distribution"><div className="owner-donut" style={{"--premium-share": `${ownerStats.totalUsers ? ownerStats.premiumUsers / ownerStats.totalUsers * 100 : 0}%`} as React.CSSProperties}><div><strong>{ownerStats.totalUsers}</strong><small>Total users</small></div></div><div className="owner-legend"><p><i className="legend-purple" /> <span>Premium users</span><b>{ownerStats.premiumUsers}</b></p><p><i className="legend-blue" /> <span>Free users</span><b>{ownerStats.freeUsers}</b></p><p><i className="legend-green" /> <span>Teachers</span><b>{ownerStats.totalTeachers}</b></p></div></div>
+                </section>
+                <section className="surface-card owner-quick-card">
+                  <div className="card-heading"><div><h3>Quick actions</h3><p>Manage the most-used areas.</p></div></div>
+                  <button onClick={() => { setOwnerSection("students"); void loadOwnerData("students"); }}><span className="quick-action-icon purple"><GraduationCap size={18}/></span><span><strong>Manage students</strong><small>Review learner accounts</small></span><ChevronRight size={17}/></button>
+                  <button onClick={() => { setOwnerSection("teachers"); void loadOwnerData("teachers"); }}><span className="quick-action-icon blue"><Users size={18}/></span><span><strong>Add or manage teachers</strong><small>Create teacher accounts</small></span><ChevronRight size={17}/></button>
+                  <button onClick={() => { setOwnerSection("users"); void loadOwnerData("users"); }}><span className="quick-action-icon green"><Users size={18}/></span><span><strong>All users</strong><small>View registered accounts</small></span><ChevronRight size={17}/></button>
+                </section>
+              </div>
+            </>}
             {ownerSection === "teachers" && <section className="surface-card owner-table-card"><div className="card-heading"><div><h3>Create teacher account</h3><p>Only the owner can create teacher accounts. Share the temporary password securely.</p></div></div><form className="form-grid" onSubmit={async (event) => { event.preventDefault(); setTeacherCreated(""); setOwnerError(""); try { const response = await apiFetch(apiBase + "/admin/teachers", { method: "POST", credentials: "include", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: teacherName, email: teacherEmail, password: teacherPassword }) }); const payload = await response.json() as { message?: string }; if (!response.ok) throw new Error(payload.message ?? "Could not create teacher."); setTeacherCreated(payload.message ?? "Teacher account created."); setTeacherName(""); setTeacherEmail(""); setTeacherPassword(""); await loadOwnerData("teachers"); } catch (error) { setOwnerError(error instanceof Error ? error.message : "Could not create teacher."); } }}><label>Teacher name<input required minLength={2} value={teacherName} onChange={(event) => setTeacherName(event.target.value)} placeholder="Full name" /></label><label>Teacher email<input required type="email" value={teacherEmail} onChange={(event) => setTeacherEmail(event.target.value)} placeholder="teacher@example.com" /></label><label>Temporary password<input required minLength={8} type="password" value={teacherPassword} onChange={(event) => setTeacherPassword(event.target.value)} placeholder="At least 8 characters" /></label><button className="button button-primary" disabled={ownerLoading}>Create teacher account <ChevronRight size={16} /></button></form>{teacherCreated && <div className="inline-message">{teacherCreated}</div>}<div className="owner-table-wrap"><table className="owner-table"><thead><tr><th>Name</th><th>Email</th><th>Plan</th><th>Created</th></tr></thead><tbody>{teacherList.map((teacher) => <tr key={teacher._id}><td>{teacher.name}</td><td>{teacher.email}</td><td>{teacher.plan}</td><td>{teacher.createdAt ? new Date(teacher.createdAt).toLocaleDateString() : "—"}</td></tr>)}{!teacherList.length && !ownerLoading && <tr><td colSpan={4}>No teacher accounts yet.</td></tr>}</tbody></table></div></section>}
             {(ownerSection === "users" || ownerSection === "students") && <section className="surface-card owner-table-card">
               <div className="card-heading"><div><h3>{ownerSection === "users" ? "All registered users" : "Students / customers"}</h3><p>{ownerSection === "users" ? "Every account registered in LinguaPro." : "Accounts with learning XP recorded."}</p></div><button className="button button-outline" onClick={() => void loadOwnerData(ownerSection as "users" | "students")}>Refresh</button></div>
