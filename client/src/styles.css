@@ -510,3 +510,60 @@ input, select { width: 100%; min-height: 42px; padding: 10px 11px; border: 1px s
 .student-task-row .button{flex-shrink:0;min-height:35px;padding:7px 13px}
 .student-tasks-complete{margin-top:12px;padding:18px;border-radius:12px;background:#f3fbf6}.student-tasks-complete strong{font-size:14px}.student-tasks-complete p{font-size:12px;margin:6px 0 0;color:var(--muted,#667085)}
 @media(max-width:560px){.student-daily-tasks{padding:14px}.student-task-row{gap:9px;padding:10px}.student-task-number{width:30px;height:30px}.student-task-row .button{padding:6px 10px}}
+
+
+/* Article A visual lesson and interactive task flow */
+.article-a-lesson{display:grid;gap:18px;margin-top:14px}
+.article-a-visual{overflow:hidden;border:1px solid #e3dafc;border-radius:18px;background:#fff;box-shadow:0 12px 28px #40247c0c}
+.article-a-visual-top{display:flex;justify-content:space-between;gap:10px;padding:13px 16px;background:#f7f3ff;color:#6041ad;font-size:10px;font-weight:850;letter-spacing:1px}
+.article-a-scene{display:flex;align-items:center;justify-content:center;gap:clamp(12px,4vw,42px);padding:28px 14px;background:radial-gradient(circle at 50% 10%,#fff 0,#f8f6ff 60%,#f1f7ff 100%)}
+.article-a-letter{display:grid;place-items:center;width:clamp(76px,16vw,130px);height:clamp(76px,16vw,130px);border-radius:28px;background:linear-gradient(140deg,#6846c2,#9275e8);color:white;font-size:clamp(55px,10vw,90px);font-weight:900;box-shadow:0 14px 30px #5637a533}
+.article-a-object{display:grid;justify-items:center;gap:5px;min-width:0;text-align:center}
+.article-a-object>span{font-size:clamp(43px,8vw,70px);filter:drop-shadow(0 5px 4px #2222)}
+.article-a-object strong{font-size:16px;color:#2c2148}
+.article-a-object small{max-width:145px;color:#756d88;font-size:10px;line-height:1.45}
+.article-a-book{padding-left:20px;border-left:1px dashed #d4c9ee}
+.article-a-play-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 16px;border-top:1px solid #eee8fa}
+.article-a-play-row>span{color:#786e8f;font-size:11px}
+.article-a-play-row .button{min-height:35px;font-size:11px}
+.article-a-explanation,.article-a-task-box{padding:18px;border:1px solid var(--line,#e7e1f2);border-radius:16px;background:#fff}
+.article-a-explanation h3,.article-a-task-heading h3{margin:7px 0;font-size:20px;letter-spacing:-.45px}
+.article-a-explanation>p,.article-a-explanation li{color:#5e586d;font-size:13px;line-height:1.75}
+.article-a-explanation h4{margin:18px 0 8px}
+.article-a-explanation ul{padding-left:21px}
+.article-a-rule{margin:14px 0;padding:14px;border:1px solid #ddd3ff;border-radius:12px;background:linear-gradient(135deg,#f8f5ff,#f5faff)}
+.article-a-rule>strong{color:#5737a5}
+.article-a-rule p{margin:8px 0;color:#403653;font-size:13px;line-height:1.7}
+.article-a-rule small{display:block;margin-top:10px;color:#655a7d;line-height:1.7}
+.article-a-tamil{padding:12px;border-radius:10px;background:#f7f8fb}
+.article-a-task-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.article-a-task-heading p{margin:5px 0 0;color:var(--muted,#667085);font-size:12px;line-height:1.6}
+.article-a-progress{display:grid;place-items:center;flex-shrink:0;width:44px;height:44px;border-radius:50%;background:#efe8ff;color:#5737a5;font-size:12px;font-weight:850}
+.article-a-task-types{display:flex;gap:7px;flex-wrap:wrap;margin:16px 0;padding-bottom:14px;border-bottom:1px solid #ece7f5}
+.article-a-task-types button{padding:8px 10px;border:1px solid #e4deef;border-radius:9px;background:#fff;color:#655a7a;font:inherit;font-size:11px;font-weight:700;cursor:pointer}
+.article-a-task-types button.active{border-color:#7c5bd1;background:#f2edff;color:#51349d}
+.article-a-question>span{color:#7155b6;font-size:10px;font-weight:850;letter-spacing:.7px}
+.article-a-question h4{margin:8px 0 13px;font-size:16px}
+.article-a-options{display:grid;gap:8px;margin-bottom:14px}
+.article-a-options button{width:100%;padding:12px;text-align:left;border:1px solid #e5e0ee;border-radius:10px;background:#fff;color:#322943;font:inherit;font-size:13px;cursor:pointer}
+.article-a-options button.selected{border-color:#8b70d5;background:#f7f3ff}
+.article-a-options button.correct{border-color:#71c49a;background:#effbf4}
+.article-a-options button.incorrect{border-color:#e49a9a;background:#fff2f2}
+.article-a-question .button{min-height:38px;font-size:12px}
+.article-a-feedback{margin-top:12px;padding:12px;border-radius:10px}
+.article-a-feedback.good{background:#effbf4;color:#256a47}
+.article-a-feedback.try-again{background:#fff7e9;color:#835719}
+.article-a-feedback p{font-size:12px;line-height:1.6}
+.article-a-feedback .button{background:#fff}
+.article-a-speaking{display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;margin-top:18px;padding:14px;border:1px solid #dce9ff;border-radius:12px;background:#f5f9ff}
+.article-a-speaking>div{display:flex;align-items:flex-start;gap:10px;color:#4e5eab}
+.article-a-speaking>div>div{display:grid;gap:5px}
+.article-a-speaking strong{font-size:12px;color:#28366f}
+.article-a-speaking p{margin:0;color:#5f6685;font-size:11px;line-height:1.6}
+.article-a-speaking .button{min-height:34px;font-size:10px}
+.article-a-speaking>small{grid-column:1/-1;color:#5f6685;line-height:1.5}
+.article-a-finish{display:flex;align-items:center;gap:8px;margin-top:12px;padding:12px;border-radius:10px;background:#effbf4;color:#246b47;font-size:12px;font-weight:700}
+.article-a-complete{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px;border-radius:12px;background:#f8f6fc}
+.article-a-complete p{margin:0;color:#696179;font-size:11px;line-height:1.6}
+.article-a-complete .button{min-height:37px;font-size:11px}
+@media(max-width:520px){.article-a-explanation,.article-a-task-box{padding:13px}.article-a-scene{gap:10px;padding:22px 8px}.article-a-object small{font-size:9px}.article-a-book{padding-left:10px}.article-a-speaking{grid-template-columns:1fr}.article-a-speaking .button{justify-self:start}.article-a-visual-top{font-size:8px}.article-a-task-heading h3{font-size:17px}}
