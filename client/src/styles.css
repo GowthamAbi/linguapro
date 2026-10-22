@@ -498,3 +498,15 @@ input, select { width: 100%; min-height: 42px; padding: 10px 11px; border: 1px s
 .student-daily-goal-setting>p{flex-basis:100%;margin:0;color:var(--accent,#6240be);font-size:11px}
 .student-goal-progress{margin:10px 0 15px}.student-goal-progress>div:first-child{display:flex;justify-content:space-between;gap:10px;font-size:11px;margin-bottom:7px}
 @media(max-width:600px){.student-daily-goal-grid{grid-template-columns:1fr;gap:8px}.student-goal-metric{padding:10px}.student-daily-goal-setting{align-items:flex-start;flex-direction:column}.student-goal-options{width:100%}.student-goal-options .button{flex:1}}
+
+/* Daily study tasks */
+.student-daily-tasks{margin:18px 0;padding:20px}
+.student-task-count{white-space:nowrap;border-radius:999px;background:#f0eaff;color:#5737a5;padding:7px 11px;font-size:12px;font-weight:700}
+.student-task-list{display:grid;gap:10px;margin-top:14px}
+.student-task-row{display:flex;align-items:center;gap:12px;padding:13px;border:1px solid var(--line,#e8e2f3);border-radius:13px;background:#fff}
+.student-task-number{display:grid;place-items:center;flex-shrink:0;width:34px;height:34px;border-radius:10px;background:#f0eaff;color:#5737a5;font-weight:700}
+.student-task-copy{display:grid;gap:4px;flex:1;min-width:0}
+.student-task-copy strong{font-size:13px}.student-task-copy small{font-size:11px;color:var(--muted,#667085);overflow-wrap:anywhere}.student-task-copy span{font-size:11px;color:#5737a5}
+.student-task-row .button{flex-shrink:0;min-height:35px;padding:7px 13px}
+.student-tasks-complete{margin-top:12px;padding:18px;border-radius:12px;background:#f3fbf6}.student-tasks-complete strong{font-size:14px}.student-tasks-complete p{font-size:12px;margin:6px 0 0;color:var(--muted,#667085)}
+@media(max-width:560px){.student-daily-tasks{padding:14px}.student-task-row{gap:9px;padding:10px}.student-task-number{width:30px;height:30px}.student-task-row .button{padding:6px 10px}}
