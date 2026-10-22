@@ -8,7 +8,7 @@ export interface UserProfile {
   targetLanguage: string;
   level: LearningLevel;
   plan: "Free" | "Premium";
-  role: "student" | "teacher";
+  role: "student" | "teacher" | "owner";
 }
 
 export interface LearningTask {
