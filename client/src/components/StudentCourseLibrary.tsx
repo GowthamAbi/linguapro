@@ -36,7 +36,7 @@ export default function StudentCourseLibrary({ apiBase, authToken = "", initialL
   const [openPractice, setOpenPractice] = useState<string>("");
   const [practiceResponses, setPracticeResponses] = useState<Record<string, string>>({});
   const [practiceFeedback, setPracticeFeedback] = useState<Record<string, string>>({});
-  const [xpHistory, setXpHistory] = useState<{ totalXp: number; weekly: { date: string; day: string; xp: number }[]; events: { _id: string; label: string; xpEarned: number; earnedOn: string }[] } | null>(null);
+  const [xpHistory, setXpHistory] = useState<{ totalXp: number; dailyXpGoal: number; todayXp: number; streakDays: number; activeDaysThisWeek: number; weekly: { date: string; day: string; xp: number }[]; events: { _id: string; label: string; xpEarned: number; earnedOn: string }[] } | null>(null);\n  const [goalSaving, setGoalSaving] = useState(false);\n  const [goalMessage, setGoalMessage] = useState("");
   const [quizSelections, setQuizSelections] = useState<Record<string, number[]>>({});
   const [quizResults, setQuizResults] = useState<Record<string, QuizResult>>({});
   const [quizMessages, setQuizMessages] = useState<Record<string, string>>({});
@@ -55,7 +55,7 @@ export default function StudentCourseLibrary({ apiBase, authToken = "", initialL
       setCourses(payload.data?.courses ?? []);
       setProgress(payload.data?.progress ?? {});
       const xpResponse = await fetch(apiBase + "/student-courses/xp-history", { credentials: "include", headers: authHeaders() });
-      const xpPayload = await xpResponse.json() as { data?: { totalXp: number; weekly: { date: string; day: string; xp: number }[]; events: { _id: string; label: string; xpEarned: number; earnedOn: string }[] } };
+      const xpPayload = await xpResponse.json() as { data?: { totalXp: number; dailyXpGoal: number; todayXp: number; streakDays: number; activeDaysThisWeek: number; weekly: { date: string; day: string; xp: number }[]; events: { _id: string; label: string; xpEarned: number; earnedOn: string }[] } };
       if (xpResponse.ok) setXpHistory(xpPayload.data ?? null);
       const historyResponse = await fetch(apiBase + "/student-courses/practice-history", { credentials: "include", headers: authHeaders() });
       const historyPayload = await historyResponse.json() as { data?: { entries: typeof practiceHistory } };
@@ -67,6 +67,25 @@ export default function StudentCourseLibrary({ apiBase, authToken = "", initialL
     finally { setLoading(false); }
   }
   useEffect(() => { void loadCourses(); }, [apiBase, authToken]);
+
+  async function saveDailyGoal(dailyXpGoal: number) {
+    setGoalSaving(true);
+    setGoalMessage("");
+    try {
+      const response = await fetch(apiBase + "/student-courses/learning-goal", {
+        method: "PATCH", credentials: "include", headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ dailyXpGoal }),
+      });
+      const payload = await response.json() as { message?: string; data?: { dailyXpGoal: number } };
+      if (!response.ok || !payload.data) throw new Error(payload.message ?? "Could not save your daily goal.");
+      setXpHistory((old) => old ? { ...old, dailyXpGoal: payload.data?.dailyXpGoal ?? dailyXpGoal } : old);
+      setGoalMessage("Daily goal saved!");
+    } catch (err) {
+      setGoalMessage(err instanceof Error ? err.message : "Could not save your daily goal.");
+    } finally {
+      setGoalSaving(false);
+    }
+  }
 
   async function completeLesson(courseId: string, lessonId: string) {
     setProgressMessage("");
@@ -155,6 +174,17 @@ export default function StudentCourseLibrary({ apiBase, authToken = "", initialL
     </div>
     <section className="surface-card student-xp-panel">
       <div className="card-heading"><div><span className="course-builder-eyebrow">YOUR LEARNING MOMENTUM</span><h3>XP history &amp; weekly progress</h3><p>Your recent XP rewards and activity from the last 7 days.</p></div><div className="student-xp-total"><strong>{xpHistory?.totalXp ?? 0}</strong><span>Total XP</span></div></div>
+      <div className="student-daily-goal-grid">
+        <article className="student-goal-metric"><span aria-hidden="true">🔥</span><div><strong>{xpHistory?.streakDays ?? 0} day{(xpHistory?.streakDays ?? 0) === 1 ? "" : "s"}</strong><small>Learning streak</small></div></article>
+        <article className="student-goal-metric"><span aria-hidden="true">🎯</span><div><strong>{xpHistory?.todayXp ?? 0} / {xpHistory?.dailyXpGoal ?? 20} XP</strong><small>Today's goal</small></div></article>
+        <article className="student-goal-metric"><span aria-hidden="true">📅</span><div><strong>{xpHistory?.activeDaysThisWeek ?? 0} / 7 days</strong><small>Weekly activity</small></div></article>
+      </div>
+      <div className="student-daily-goal-setting">
+        <div><strong>Set your daily XP goal</strong><small>Choose a realistic target and build a steady habit.</small></div>
+        <div className="student-goal-options">{[10, 20, 30, 50].map((goal) => <button type="button" key={goal} className={"button " + ((xpHistory?.dailyXpGoal ?? 20) === goal ? "button-primary" : "button-outline")} disabled={goalSaving} onClick={() => void saveDailyGoal(goal)}>{goal} XP</button>)}</div>
+        {goalMessage && <p role="status">{goalMessage}</p>}
+      </div>
+      <div className="student-goal-progress" aria-label="Today's XP goal progress"><div><span>Daily goal progress</span><strong>{Math.min(100, Math.round(((xpHistory?.todayXp ?? 0) / Math.max(1, xpHistory?.dailyXpGoal ?? 20)) * 100))}%</strong></div><div className="student-progress-track"><span style={{ width: Math.min(100, ((xpHistory?.todayXp ?? 0) / Math.max(1, xpHistory?.dailyXpGoal ?? 20)) * 100) + "%" }} /></div></div>
       <div className="xp-week-chart" role="img" aria-label="XP earned each day in the last seven days">
         {(xpHistory?.weekly ?? []).map((day) => <div className="xp-week-day" key={day.date}><strong>{day.xp}</strong><div className="xp-week-bar"><span style={{ height: Math.max(day.xp > 0 ? 8 : 3, (day.xp / Math.max(1, ...(xpHistory?.weekly.map((item) => item.xp) ?? [1]))) * 100) + "%" }} /></div><small>{day.day}</small></div>)}
       </div>
