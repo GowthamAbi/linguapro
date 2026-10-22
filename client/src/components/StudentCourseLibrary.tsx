@@ -93,7 +93,7 @@ export default function StudentCourseLibrary({ apiBase, authToken = "", initialL
     </section>
     <div className="course-library-filters">
       <label>Learner category<select value={category} onChange={(event) => setCategory(event.target.value)}><option value="all">All categories</option><option value="kids">Kids</option><option value="adults">Adults</option><option value="working-professionals">Working Professionals</option><option value="job-seekers">Job Seekers</option></select></label>
-      <label>Level<select value={level} onChange={(event) => setLevel(event.target.value)}><option value="all">All levels</option><option>Basic</option><option>Intermediate</option><option>Advanced</option></select></label>
+      <label>Level<select value={level} onChange={(event) => setLevel(event.target.value as "all" | "Basic" | "Intermediate" | "Advanced")}><option value="all">All levels</option><option>Basic</option><option>Intermediate</option><option>Advanced</option></select></label>
     </div>
     {loading && <p className="inline-message">Loading courses…</p>}
     {error && <p className="inline-message">{error}</p>}
