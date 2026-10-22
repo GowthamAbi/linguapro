@@ -485,3 +485,16 @@ input, select { width: 100%; min-height: 42px; padding: 10px 11px; border: 1px s
 .student-quiz-review-row { display: flex; justify-content: space-between; align-items: center; gap: .75rem; padding: .45rem 0; border-top: 1px solid var(--border, #e4e7ec); }
 .student-quiz-review-row > span:first-child { overflow-wrap: anywhere; }
 @media (max-width: 480px) { .student-quiz-chart-bars { gap: .35rem; } .student-quiz-chart-bar strong { font-size: .7rem; } .student-quiz-progress-chart { padding: .7rem; } }
+
+/* Student daily goal, streak and weekly learning momentum */
+.student-daily-goal-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:18px 0}
+.student-goal-metric{display:flex;align-items:center;gap:10px;min-width:0;padding:13px;border:1px solid var(--line,#e8e2f3);border-radius:14px;background:linear-gradient(140deg,#fff,#faf8ff)}
+.student-goal-metric>span{display:grid;place-items:center;width:38px;height:38px;flex-shrink:0;border-radius:12px;background:#f0eaff;font-size:20px}
+.student-goal-metric:nth-child(2)>span{background:#fff2d8}.student-goal-metric:nth-child(3)>span{background:#e5f5ff}
+.student-goal-metric>div{display:grid;gap:4px;min-width:0}.student-goal-metric strong{font-size:14px;overflow-wrap:anywhere}.student-goal-metric small{font-size:10px;color:var(--muted,#667085)}
+.student-daily-goal-setting{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:12px 0 16px;padding:14px;border:1px solid var(--line,#e8e2f3);border-radius:13px;background:#fff}
+.student-daily-goal-setting>div:first-child{display:grid;gap:5px}.student-daily-goal-setting>div:first-child strong{font-size:12px}.student-daily-goal-setting small{color:var(--muted,#667085);font-size:10px}
+.student-goal-options{display:flex;gap:7px;flex-wrap:wrap}.student-goal-options .button{min-height:34px;padding:7px 11px;font-size:11px}
+.student-daily-goal-setting>p{flex-basis:100%;margin:0;color:var(--accent,#6240be);font-size:11px}
+.student-goal-progress{margin:10px 0 15px}.student-goal-progress>div:first-child{display:flex;justify-content:space-between;gap:10px;font-size:11px;margin-bottom:7px}
+@media(max-width:600px){.student-daily-goal-grid{grid-template-columns:1fr;gap:8px}.student-goal-metric{padding:10px}.student-daily-goal-setting{align-items:flex-start;flex-direction:column}.student-goal-options{width:100%}.student-goal-options .button{flex:1}}
