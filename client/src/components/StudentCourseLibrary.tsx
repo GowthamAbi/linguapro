@@ -21,10 +21,11 @@ const practiceLabels: Record<Lesson["practiceType"], string> = {
   reading: "Reading", speaking: "Speaking", listening: "Listening", quiz: "Quiz", roleplay: "Role-play",
 };
 
-export default function StudentCourseLibrary({ apiBase, authToken = "" }: { apiBase: string; authToken?: string }) {
+export default function StudentCourseLibrary({ apiBase, authToken = "", initialLevel = "all" }: { apiBase: string; authToken?: string; initialLevel?: "all" | "Basic" | "Intermediate" | "Advanced" }) {
   const [courses, setCourses] = useState<Course[]>([]);
   const [category, setCategory] = useState("all");
-  const [level, setLevel] = useState("all");
+  const [level, setLevel] = useState<"all" | "Basic" | "Intermediate" | "Advanced">(initialLevel);
+  useEffect(() => { setLevel(initialLevel); }, [initialLevel]);
   const [expanded, setExpanded] = useState<string>("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -89,7 +90,8 @@ export default function StudentCourseLibrary({ apiBase, authToken = "" }: { apiB
         {(xpHistory?.events ?? []).slice(0, 5).map((event) => <div className="xp-history-row" key={event._id}><div><strong>{event.label}</strong><small>{event.earnedOn}</small></div><b>+{event.xpEarned} XP</b></div>)}
         {(!xpHistory?.events.length) && <p className="muted-small">Complete a lesson or daily practice to start building your XP history.</p>}
       </div>
-    </section>\n    <div className="course-library-filters">
+    </section>
+    <div className="course-library-filters">
       <label>Learner category<select value={category} onChange={(event) => setCategory(event.target.value)}><option value="all">All categories</option><option value="kids">Kids</option><option value="adults">Adults</option><option value="working-professionals">Working Professionals</option><option value="job-seekers">Job Seekers</option></select></label>
       <label>Level<select value={level} onChange={(event) => setLevel(event.target.value)}><option value="all">All levels</option><option>Basic</option><option>Intermediate</option><option>Advanced</option></select></label>
     </div>
