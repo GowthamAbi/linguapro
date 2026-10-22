@@ -567,3 +567,95 @@ input, select { width: 100%; min-height: 42px; padding: 10px 11px; border: 1px s
 .article-a-complete p{margin:0;color:#696179;font-size:11px;line-height:1.6}
 .article-a-complete .button{min-height:37px;font-size:11px}
 @media(max-width:520px){.article-a-explanation,.article-a-task-box{padding:13px}.article-a-scene{gap:10px;padding:22px 8px}.article-a-object small{font-size:9px}.article-a-book{padding-left:10px}.article-a-speaking{grid-template-columns:1fr}.article-a-speaking .button{justify-self:start}.article-a-visual-top{font-size:8px}.article-a-task-heading h3{font-size:17px}}
+
+
+/* Mobile-first fixes for student lessons and quiz answers */
+.student-course-library,
+.student-course-library * { box-sizing: border-box; }
+.student-course-library { min-width: 0; width: 100%; }
+.student-course-library .student-course-list,
+.student-course-library .student-course-item,
+.student-course-library .student-course-lessons,
+.student-course-library .student-module,
+.student-course-library .student-lesson,
+.student-course-library .student-practice-panel { min-width: 0; max-width: 100%; }
+.student-course-library .student-practice-panel { overflow: hidden; }
+.student-course-library .student-quiz-question {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-inline-size: 0;
+  padding: 12px;
+  margin: 12px 0;
+}
+.student-course-library .student-quiz-question legend {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  padding: 0 4px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+  font-size: 14px;
+}
+.student-course-library .student-quiz-option {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: flex-start;
+  width: 100%;
+  min-width: 0;
+  gap: 10px;
+  padding: 12px 10px;
+  margin: 4px 0;
+  border: 1px solid #e9e4f2;
+  border-radius: 10px;
+  background: #fff;
+  line-height: 1.5;
+}
+.student-course-library .student-quiz-option input {
+  display: block;
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  margin: 2px 0 0;
+  flex: 0 0 18px;
+}
+.student-course-library .student-quiz-option span {
+  display: block;
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  writing-mode: horizontal-tb;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.student-course-library .student-quiz-option:has(input:checked) {
+  border-color: #8b70d5;
+  background: #f7f3ff;
+}
+.student-course-library .student-practice-panel > .button { max-width: 100%; white-space: normal; }
+@media (max-width: 700px) {
+  .student-course-library { padding-left: 0; padding-right: 0; }
+  .student-course-library .section-heading { align-items: flex-start; gap: 10px; }
+  .student-course-library .section-heading h2 { font-size: 21px; line-height: 1.3; }
+  .student-course-library .student-course-summary { align-items: flex-start; flex-wrap: wrap; gap: 12px; }
+  .student-course-library .student-course-copy { flex: 1 1 calc(100% - 60px); min-width: 0; }
+  .student-course-library .student-course-summary > .button { width: 100%; justify-content: center; }
+  .student-course-library .student-lesson-heading { align-items: flex-start; gap: 8px; }
+  .student-course-library .student-lesson-heading > strong { min-width: 0; overflow-wrap: anywhere; line-height: 1.45; }
+  .student-course-library .student-lesson-heading > .tag { flex-shrink: 0; }
+  .student-course-library .student-practice-panel { padding: 12px; }
+  .student-course-library .student-quiz-question legend { font-size: 14px; }
+  .student-course-library .student-quiz-option { padding: 12px 9px; }
+  .student-course-library .student-quiz-option span { font-size: 14px; }
+  .student-course-library .student-practice-panel > .button { justify-self: stretch; width: 100%; }
+}
+@media (max-width: 380px) {
+  .student-course-library .student-quiz-question { padding: 9px; }
+  .student-course-library .student-quiz-option { gap: 8px; }
+  .student-course-library .student-quiz-option span { font-size: 13px; }
+}
