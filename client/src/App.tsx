@@ -93,7 +93,6 @@ function App() {
   });
   const [phraseIndex, setPhraseIndex] = useState(0);
   const [learningLevel, setLearningLevel] = useState<"all" | LearningLevel>("all");
-  const [learningLevel, setLearningLevel] = useState<"all" | LearningLevel>("all");
   const [vocabAnswers, setVocabAnswers] = useState<Record<string, string>>(() => {
     try { return JSON.parse(localStorage.getItem("linguapro-vocab-answers") || "{}") as Record<string, string>; } catch { return {}; }
   });
