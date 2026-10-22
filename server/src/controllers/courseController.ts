@@ -164,6 +164,32 @@ export async function saveStudentPractice(request: AuthenticatedRequest, respons
 }
 
 
+
+export async function getStudentPracticeHistory(request: AuthenticatedRequest, response: Response): Promise<void> {
+  const enrollments = await CourseEnrollment.find({ studentId: request.userId, "practiceResponses.0": { $exists: true } })
+    .populate("courseId", "title modules")
+    .sort({ updatedAt: -1 })
+    .lean();
+  const entries = enrollments.flatMap((enrollment) => {
+    const course = enrollment.courseId && typeof enrollment.courseId === "object" && "title" in enrollment.courseId
+      ? enrollment.courseId as unknown as { title: string; modules?: { lessons?: { _id: unknown; title: string }[] }[] }
+      : null;
+    return (enrollment.practiceResponses ?? []).map((item) => {
+      const lesson = course?.modules?.flatMap((module) => module.lessons ?? []).find((candidate) => String(candidate._id) === item.lessonId);
+      return {
+        _id: String(item._id ?? item.lessonId + ":" + new Date(item.submittedAt).getTime()),
+        courseTitle: course?.title ?? "Course",
+        lessonTitle: lesson?.title ?? "Lesson",
+        response: item.response,
+        practiceType: item.practiceType,
+        submittedAt: item.submittedAt,
+      };
+    });
+  }).sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()).slice(0, 30);
+  response.json({ data: { entries } });
+}
+
+
 export async function getTeacherCourseProgress(request: AuthenticatedRequest, response: Response): Promise<void> {
   const courses = await Course.find({ teacherId: request.userId })
     .select("title status modules")
