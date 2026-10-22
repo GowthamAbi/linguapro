@@ -67,7 +67,58 @@ export async function updateCourse(request: AuthenticatedRequest, response: Resp
 }
 
 
+const starterTeacherEmail = "linguapro-starter@system.invalid";
+
+async function ensureStarterEnglishCourse(): Promise<void> {
+  const existing = await Course.findOne({ status: "published", title: "Basic English Speaking — Start Here" }).select("_id").lean();
+  if (existing) return;
+
+  let teacher = await User.findOne({ email: starterTeacherEmail }).select("_id").lean();
+  if (!teacher) {
+    const [createdTeacher] = await User.create([{
+      name: "LinguaPro Learning Team",
+      email: starterTeacherEmail,
+      passwordHash: "system-seeded-account-login-disabled",
+      role: "teacher",
+      nativeLanguage: "Tamil",
+      targetLanguage: "English",
+      level: "Basic",
+      plan: "Free",
+    }]);
+    teacher = { _id: createdTeacher._id };
+  }
+
+  await Course.create({
+    teacherId: teacher._id,
+    title: "Basic English Speaking — Start Here",
+    description: "A beginner-friendly English course with Tamil meanings, everyday sentences, speaking tasks and short quizzes.",
+    learnerCategory: "adults",
+    level: "Basic",
+    industry: "general",
+    goal: "daily-conversation",
+    status: "published",
+    modules: [
+      { title: "Day 1: Greetings and Introductions", lessons: [
+        { title: "Say Hello", content: "Hello!\nGood morning.\nHow are you?\nI am fine, thank you.\nWhat is your name?\nMy name is ____.", tamilMeaning: "வணக்கம்!\nகாலை வணக்கம்.\nநீங்கள் எப்படி இருக்கிறீர்கள்?\nநான் நலமாக இருக்கிறேன், நன்றி.\nஉங்கள் பெயர் என்ன?\nஎன் பெயர் ____.", practiceType: "speaking" },
+        { title: "Introduce Yourself", content: "My name is Arun.\nI am from Tamil Nadu.\nI live in Coimbatore.\nI am learning English.\nNice to meet you.", tamilMeaning: "என் பெயர் அருண்.\nநான் தமிழ்நாட்டைச் சேர்ந்தவன்.\nநான் கோயம்புத்தூரில் வசிக்கிறேன்.\nநான் ஆங்கிலம் கற்றுக்கொண்டு இருக்கிறேன்.\nஉங்களைச் சந்தித்ததில் மகிழ்ச்சி.", practiceType: "roleplay" },
+      ]},
+      { title: "Day 2: Everyday English", lessons: [
+        { title: "Useful Daily Sentences", content: "Please help me.\nCould you repeat that?\nI do not understand.\nPlease speak slowly.\nThank you for your help.", tamilMeaning: "தயவுசெய்து எனக்கு உதவுங்கள்.\nஅதை மீண்டும் சொல்ல முடியுமா?\nஎனக்குப் புரியவில்லை.\nதயவுசெய்து மெதுவாகப் பேசுங்கள்.\nஉங்கள் உதவிக்கு நன்றி.", practiceType: "reading" },
+        { title: "Build Simple Sentences", content: "I work every day.\nI want to improve my English.\nI can speak a little English.\nI will practise every day.", tamilMeaning: "நான் தினமும் வேலை செய்கிறேன்.\nஎன் ஆங்கிலத்தை மேம்படுத்த விரும்புகிறேன்.\nஎனக்கு கொஞ்சம் ஆங்கிலம் பேசத் தெரியும்.\nநான் தினமும் பயிற்சி செய்வேன்.", practiceType: "speaking" },
+      ]},
+      { title: "Day 3: Check Your Learning", lessons: [
+        { title: "Greetings Quiz", content: "Choose the correct English phrase for a polite greeting.", tamilMeaning: "மரியாதையாக ஒருவரை வாழ்த்துவதற்கான சரியான ஆங்கிலச் சொற்றொடரைத் தேர்ந்தெடுக்கவும்.", practiceType: "quiz", quizQuestions: [
+          { question: "Which phrase means காலை வணக்கம்?", options: ["Good night", "Good morning", "Goodbye", "See you"], correctAnswerIndex: 1, explanationTamil: "Good morning என்பது காலை வணக்கம்." },
+          { question: "How do you ask someone's name?", options: ["Where are you?", "How old morning?", "What is your name?", "I am fine"], correctAnswerIndex: 2, explanationTamil: "What is your name? என்பது உங்கள் பெயர் என்ன? என்று கேட்பது." },
+          { question: "Choose the correct reply to How are you?", options: ["I am fine, thank you.", "My name tomorrow.", "Good night morning.", "I from hello."], correctAnswerIndex: 0, explanationTamil: "How are you? என்ற கேள்விக்கு I am fine, thank you என்று பதிலளிக்கலாம்." },
+        ]},
+      ]},
+    ],
+  });
+}
+
 export async function listPublishedStudentCourses(request: AuthenticatedRequest, response: Response): Promise<void> {
+  await ensureStarterEnglishCourse();
   const [courses, enrollments] = await Promise.all([
     Course.find({ status: "published" })
       .select("title description learnerCategory level industry goal modules teacherId createdAt")
