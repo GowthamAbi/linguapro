@@ -53,9 +53,10 @@ export async function register(request: Request, response: Response): Promise<vo
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
   const user = await User.create({ name: parsed.data.name, email, passwordHash });
-  setSessionCookie(response, createSessionToken(user.id));
+  const token = createSessionToken(user.id);
+  setSessionCookie(response, token);
 
-  response.status(201).json({ message: "Account created successfully.", data: { user: user.toJSON() } });
+  response.status(201).json({ message: "Account created successfully.", token, data: { user: user.toJSON() } });
 }
 
 export async function login(request: Request, response: Response): Promise<void> {
@@ -93,8 +94,9 @@ export async function login(request: Request, response: Response): Promise<void>
     return;
   }
 
-  setSessionCookie(response, createSessionToken(user.id));
-  response.json({ message: ownerLogin ? "Owner signed in successfully." : "Signed in successfully.", data: { user: { ...user.toJSON(), role: ownerLogin ? "owner" : user.role } } });
+  const token = createSessionToken(user.id);
+  setSessionCookie(response, token);
+  response.json({ message: ownerLogin ? "Owner signed in successfully." : "Signed in successfully.", token, data: { user: { ...user.toJSON(), role: ownerLogin ? "owner" : user.role } } });
 }
 
 export function logout(_request: Request, response: Response): void {
