@@ -92,6 +92,7 @@ function App() {
     } catch { return defaultTasks; }
   });
   const [phraseIndex, setPhraseIndex] = useState(0);
+  const [learningLevel, setLearningLevel] = useState<"all" | LearningLevel>("all");
   const [vocabAnswers, setVocabAnswers] = useState<Record<string, string>>(() => {
     try { return JSON.parse(localStorage.getItem("linguapro-vocab-answers") || "{}") as Record<string, string>; } catch { return {}; }
   });
@@ -650,11 +651,11 @@ function App() {
           {page === "courses" && <>
             <PageTitle eyebrow="YOUR LEARNING PATH" title="My learning" subtitle="A clear path from first words to confident conversations." />
             <section className="student-learning-hero">
-              <div className="student-learning-hero-copy"><span className="course-builder-eyebrow">YOUR ENGLISH JOURNEY</span><h2>Small steps. <span>Confident English.</span></h2><p>Learn a lesson, practise what you learn, speak out loud, and review your progress. Your course progress and XP are saved to your account.</p><div className="student-learning-method"><span>01 Learn</span><i>→</i><span>02 Practise</span><i>→</i><span>03 Speak</span><i>→</i><span>04 Review</span></div></div>
+              <div className="student-learning-hero-copy"><span className="course-builder-eyebrow">YOUR ENGLISH JOURNEY</span><h2>Small steps. <span>Confident English.</span></h2><p>Learn a lesson, practise what you learn, speak out loud, and review your progress. Your course progress and XP are saved to your account.</p><div className="student-learning-method"><span>01 Learn</span><i>→</i><span>02 Practise</span><i>→</i><span>03 Speak</span><i>→</i><span>04 Feedback</span><i>→</i><span>05 Revise</span><i>→</i><span>06 Apply</span></div></div>
               <div className="student-learning-hero-art" aria-hidden="true"><div className="learning-book-orb"><BookOpen size={42}/></div><span className="learning-float learning-float-one">Aa</span><span className="learning-float learning-float-two"><Languages size={20}/></span><span className="learning-float learning-float-three"><Star size={18}/></span></div>
             </section>
-            <div className="student-learning-levels"><article><span>🌱</span><div><strong>Basic</strong><small>Build your foundations</small></div></article><article><span>🚀</span><div><strong>Intermediate</strong><small>Use English with confidence</small></div></article><article><span>🎓</span><div><strong>Advanced</strong><small>Communicate fluently</small></div></article></div>
-            <StudentCourseLibrary apiBase={apiBase} authToken={authToken} />
+            <div className="student-learning-levels"><button type="button" className={"student-level-button " + (learningLevel === "Basic" ? "selected" : "")} onClick={() => setLearningLevel(learningLevel === "Basic" ? "all" : "Basic")}><span>🌱</span><div><strong>Basic</strong><small>Build your foundations</small></div><small>Choose level ↗</small></button><button type="button" className={"student-level-button " + (learningLevel === "Intermediate" ? "selected" : "")} onClick={() => setLearningLevel(learningLevel === "Intermediate" ? "all" : "Intermediate")}><span>🚀</span><div><strong>Intermediate</strong><small>Use English with confidence</small></div><small>Choose level ↗</small></button><button type="button" className={"student-level-button " + (learningLevel === "Advanced" ? "selected" : "")} onClick={() => setLearningLevel(learningLevel === "Advanced" ? "all" : "Advanced")}><span>🎓</span><div><strong>Advanced</strong><small>Communicate fluently</small></div><small>Choose level ↗</small></button></div>
+            <StudentCourseLibrary apiBase={apiBase} authToken={authToken} initialLevel={learningLevel} />
           </>}
 
           {page === "speaking" && <>
