@@ -165,7 +165,32 @@ export async function submitStudentQuiz(request: AuthenticatedRequest, response:
     explanationTamil: question.explanationTamil ?? "",
   }));
   const score = results.filter((item) => item.isCorrect).length;
-  response.json({ data: { score, total: questions.length, percentage: Math.round(score / questions.length * 100), results } });
+  const percentage = Math.round(score / questions.length * 100);
+  const enrollment = await CourseEnrollment.findOneAndUpdate(
+    { studentId: request.userId, courseId },
+    { $push: { quizAttempts: { lessonId, score, total: questions.length, percentage, submittedAt: new Date() } } },
+    { new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true },
+  );
+  const latestAttempt = enrollment.quizAttempts[enrollment.quizAttempts.length - 1];
+  response.json({ data: { score, total: questions.length, percentage, results, attemptId: String(latestAttempt?._id ?? ""), submittedAt: latestAttempt?.submittedAt } });
+}
+
+
+export async function getStudentQuizHistory(request: AuthenticatedRequest, response: Response): Promise<void> {
+  const enrollments = await CourseEnrollment.find({ studentId: request.userId, "quizAttempts.0": { $exists: true } })
+    .populate("courseId", "title modules")
+    .sort({ updatedAt: -1 })
+    .lean();
+  const entries = enrollments.flatMap((enrollment) => {
+    const course = enrollment.courseId && typeof enrollment.courseId === "object" && "title" in enrollment.courseId
+      ? enrollment.courseId as unknown as { title: string; modules?: { lessons?: { _id: unknown; title: string }[] }[] }
+      : null;
+    return (enrollment.quizAttempts ?? []).map((attempt) => {
+      const lesson = course?.modules?.flatMap((module) => module.lessons ?? []).find((candidate) => String(candidate._id) === attempt.lessonId);
+      return { _id: String(attempt._id ?? attempt.lessonId + ":" + new Date(attempt.submittedAt).getTime()), courseTitle: course?.title ?? "Course", lessonTitle: lesson?.title ?? "Quiz", score: attempt.score, total: attempt.total, percentage: attempt.percentage, submittedAt: attempt.submittedAt };
+    });
+  }).sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime()).slice(0, 30);
+  response.json({ data: { entries } });
 }
 
 
