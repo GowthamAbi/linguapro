@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Award, BookOpen, ChevronDown, ChevronRight, Languages, RefreshCw, TrendingUp } from "lucide-react";
+import ArticleALesson from "./ArticleALesson";
 
 type QuizQuestion = { question: string; options: string[]; explanationTamil?: string };
 type QuizResult = { score: number; total: number; percentage: number; results: { question: string; options: string[]; selectedAnswerIndex: number; correctAnswerIndex: number; isCorrect: boolean; explanationTamil: string }[] };
@@ -278,30 +279,32 @@ export default function StudentCourseLibrary({ apiBase, authToken = "", initialL
               const isDone = (progress[course._id]?.completedLessonIds ?? []).includes(lesson._id);
               return <article className={"student-lesson " + (isDone ? "student-lesson-done" : "")} key={lesson._id}>
                 <div className="student-lesson-heading"><strong>{moduleIndex + 1}.{lessonIndex + 1} {lesson.title}</strong><span className="tag">{practiceLabels[lesson.practiceType]}</span></div>
-                {lesson.content && <p>{lesson.content}</p>}
-                {lesson.tamilMeaning && <div className="student-tamil-meaning"><Languages size={16} /><div><strong>தமிழ் விளக்கம்</strong><p>{lesson.tamilMeaning}</p></div></div>}
-                <button className="button button-outline student-practice-toggle" type="button" onClick={() => { setOpenPractice(openPractice === lesson._id ? "" : lesson._id); setPracticeFeedback((old) => ({ ...old, [lesson._id]: "" })); }}>{openPractice === lesson._id ? "Hide practice" : "Start practice"} · {practiceLabels[lesson.practiceType]}</button>
-                {openPractice === lesson._id && <div className="student-practice-panel">
-                  {lesson.practiceType === "quiz" ? <>
-                    <strong>🧠 Multiple-choice quiz</strong>
-                    {(lesson.quizQuestions ?? []).length === 0 ? <p>இந்த பாடத்திற்கு quiz questions இன்னும் சேர்க்கப்படவில்லை. ஆசிரியரிடம் கேளுங்கள்.</p> : <>
-                      {(lesson.quizQuestions ?? []).map((question, qi) => <fieldset className="student-quiz-question" key={qi}>
-                        <legend>{qi + 1}. {question.question}</legend>
-                        {question.options.map((option, oi) => <label className="student-quiz-option" key={oi}><input type="radio" name={lesson._id + "-quiz-" + qi} checked={quizSelections[lesson._id]?.[qi] === oi} onChange={() => { setQuizSelections((old) => { const answers = [...(old[lesson._id] ?? [])]; answers[qi] = oi; return { ...old, [lesson._id]: answers }; }); setQuizResults((old) => { const next = { ...old }; delete next[lesson._id]; return next; }); setQuizMessages((old) => ({ ...old, [lesson._id]: "" })); }} /> <span>{option}</span></label>)}
-                      </fieldset>)}
-                      <button type="button" className="button button-primary" onClick={() => void submitQuiz(course._id, lesson)}>Submit quiz</button>
-                      {quizMessages[lesson._id] && <p className="student-practice-feedback" role="status">{quizMessages[lesson._id]}</p>}
-                      {quizResults[lesson._id] && <div className="student-quiz-results"><h4>Score: {quizResults[lesson._id].score}/{quizResults[lesson._id].total} ({quizResults[lesson._id].percentage}%)</h4>{quizResults[lesson._id].results.map((result, ri) => <article key={ri}><strong>{ri + 1}. {result.isCorrect ? "✓ Correct" : "✗ Incorrect"} — {result.question}</strong><p>Correct answer: {result.options[result.correctAnswerIndex]}</p>{result.explanationTamil && <p className="student-tamil-meaning"><Languages size={16} /> தமிழ் விளக்கம்: {result.explanationTamil}</p>}</article>)}</div>}
+                {lesson.title === "Article A: The First Step" ? <ArticleALesson isDone={isDone} onComplete={() => void completeLesson(course._id, lesson._id)} /> : <>
+                  {lesson.content && <p>{lesson.content}</p>}
+                  {lesson.tamilMeaning && <div className="student-tamil-meaning"><Languages size={16} /><div><strong>தமிழ் விளக்கம்</strong><p>{lesson.tamilMeaning}</p></div></div>}
+                  <button className="button button-outline student-practice-toggle" type="button" onClick={() => { setOpenPractice(openPractice === lesson._id ? "" : lesson._id); setPracticeFeedback((old) => ({ ...old, [lesson._id]: "" })); }}>{openPractice === lesson._id ? "Hide practice" : "Start practice"} · {practiceLabels[lesson.practiceType]}</button>
+                  {openPractice === lesson._id && <div className="student-practice-panel">
+                    {lesson.practiceType === "quiz" ? <>
+                      <strong>🧠 Multiple-choice quiz</strong>
+                      {(lesson.quizQuestions ?? []).length === 0 ? <p>இந்த பாடத்திற்கு quiz questions இன்னும் சேர்க்கப்படவில்லை. ஆசிரியரிடம் கேளுங்கள்.</p> : <>
+                        {(lesson.quizQuestions ?? []).map((question, qi) => <fieldset className="student-quiz-question" key={qi}>
+                          <legend>{qi + 1}. {question.question}</legend>
+                          {question.options.map((option, oi) => <label className="student-quiz-option" key={oi}><input type="radio" name={lesson._id + "-quiz-" + qi} checked={quizSelections[lesson._id]?.[qi] === oi} onChange={() => { setQuizSelections((old) => { const answers = [...(old[lesson._id] ?? [])]; answers[qi] = oi; return { ...old, [lesson._id]: answers }; }); setQuizResults((old) => { const next = { ...old }; delete next[lesson._id]; return next; }); setQuizMessages((old) => ({ ...old, [lesson._id]: "" })); }} /> <span>{option}</span></label>)}
+                        </fieldset>)}
+                        <button type="button" className="button button-primary" onClick={() => void submitQuiz(course._id, lesson)}>Submit quiz</button>
+                        {quizMessages[lesson._id] && <p className="student-practice-feedback" role="status">{quizMessages[lesson._id]}</p>}
+                        {quizResults[lesson._id] && <div className="student-quiz-results"><h4>Score: {quizResults[lesson._id].score}/{quizResults[lesson._id].total} ({quizResults[lesson._id].percentage}%)</h4>{quizResults[lesson._id].results.map((result, ri) => <article key={ri}><strong>{ri + 1}. {result.isCorrect ? "✓ Correct" : "✗ Incorrect"} — {result.question}</strong><p>Correct answer: {result.options[result.correctAnswerIndex]}</p>{result.explanationTamil && <p className="student-tamil-meaning"><Languages size={16} /> தமிழ் விளக்கம்: {result.explanationTamil}</p>}</article>)}</div>}
+                      </>}
+                    </> : <>
+                      <strong>{lesson.practiceType === "speaking" ? "🎙️ Speaking challenge" : lesson.practiceType === "listening" ? "🎧 Listen & repeat" : lesson.practiceType === "roleplay" ? "💬 Real-life role-play" : "✍️ Reading & writing practice"}</strong>
+                      <p>{lesson.practiceType === "speaking" ? "Say the lesson phrase aloud. Then type what you said from memory." : lesson.practiceType === "listening" ? "Read the lesson aloud slowly, repeat it twice, then type the key sentence you remember." : lesson.practiceType === "roleplay" ? "Imagine you are using this English in a real conversation. Write your reply below." : "Write one sentence using the new phrase or idea from this lesson."}</p>
+                      <textarea aria-label={"Practice response for " + lesson.title} rows={3} value={practiceResponses[lesson._id] ?? ""} onChange={(event) => { setPracticeResponses((old) => ({ ...old, [lesson._id]: event.target.value })); setPracticeFeedback((old) => ({ ...old, [lesson._id]: "" })); }} placeholder="Type your practice answer here…" />
+                      <button type="button" className="button button-primary" onClick={() => void savePractice(course._id, lesson)}>Save my practice</button>
+                      {practiceFeedback[lesson._id] && <p className="student-practice-feedback" role="status">{practiceFeedback[lesson._id]}</p>}
                     </>}
-                  </> : <>
-                    <strong>{lesson.practiceType === "speaking" ? "🎙️ Speaking challenge" : lesson.practiceType === "listening" ? "🎧 Listen & repeat" : lesson.practiceType === "roleplay" ? "💬 Real-life role-play" : "✍️ Reading & writing practice"}</strong>
-                    <p>{lesson.practiceType === "speaking" ? "Say the lesson phrase aloud. Then type what you said from memory." : lesson.practiceType === "listening" ? "Read the lesson aloud slowly, repeat it twice, then type the key sentence you remember." : lesson.practiceType === "roleplay" ? "Imagine you are using this English in a real conversation. Write your reply below." : "Write one sentence using the new phrase or idea from this lesson."}</p>
-                    <textarea aria-label={"Practice response for " + lesson.title} rows={3} value={practiceResponses[lesson._id] ?? ""} onChange={(event) => { setPracticeResponses((old) => ({ ...old, [lesson._id]: event.target.value })); setPracticeFeedback((old) => ({ ...old, [lesson._id]: "" })); }} placeholder="Type your practice answer here…" />
-                    <button type="button" className="button button-primary" onClick={() => void savePractice(course._id, lesson)}>Save my practice</button>
-                    {practiceFeedback[lesson._id] && <p className="student-practice-feedback" role="status">{practiceFeedback[lesson._id]}</p>}
-                  </>}
-                </div>}
-                <button className={"button " + (isDone ? "button-outline" : "button-primary") + " student-lesson-complete"} disabled={isDone} onClick={() => void completeLesson(course._id, lesson._id)}>{isDone ? "✓ Completed" : "Mark lesson complete"}</button>
+                  </div>}
+                  <button className={"button " + (isDone ? "button-outline" : "button-primary") + " student-lesson-complete"} disabled={isDone} onClick={() => void completeLesson(course._id, lesson._id)}>{isDone ? "✓ Completed" : "Mark lesson complete"}</button>
+                </>}
               </article>;
             })}
           </section>)}
