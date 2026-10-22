@@ -35,6 +35,7 @@ export default function StudentCourseLibrary({ apiBase, authToken = "", initialL
   const [practiceResponses, setPracticeResponses] = useState<Record<string, string>>({});
   const [practiceFeedback, setPracticeFeedback] = useState<Record<string, string>>({});
   const [xpHistory, setXpHistory] = useState<{ totalXp: number; weekly: { date: string; day: string; xp: number }[]; events: { _id: string; label: string; xpEarned: number; earnedOn: string }[] } | null>(null);
+  const [practiceHistory, setPracticeHistory] = useState<{ _id: string; courseTitle: string; lessonTitle: string; response: string; practiceType: Lesson["practiceType"]; submittedAt: string }[]>([]);
 
   function authHeaders(extra?: HeadersInit): Headers { const headers = new Headers(extra); if (authToken) headers.set("Authorization", "Bearer " + authToken); return headers; }
 
@@ -50,6 +51,9 @@ export default function StudentCourseLibrary({ apiBase, authToken = "", initialL
       const xpResponse = await fetch(apiBase + "/student-courses/xp-history", { credentials: "include", headers: authHeaders() });
       const xpPayload = await xpResponse.json() as { data?: { totalXp: number; weekly: { date: string; day: string; xp: number }[]; events: { _id: string; label: string; xpEarned: number; earnedOn: string }[] } };
       if (xpResponse.ok) setXpHistory(xpPayload.data ?? null);
+      const historyResponse = await fetch(apiBase + "/student-courses/practice-history", { credentials: "include", headers: authHeaders() });
+      const historyPayload = await historyResponse.json() as { data?: { entries: typeof practiceHistory } };
+      if (historyResponse.ok) setPracticeHistory(historyPayload.data?.entries ?? []);
     } catch (err) { setError(err instanceof Error ? err.message : "Could not load courses."); }
     finally { setLoading(false); }
   }
@@ -92,6 +96,9 @@ export default function StudentCourseLibrary({ apiBase, authToken = "", initialL
       const payload = await response.json() as { message?: string };
       if (!response.ok) throw new Error(payload.message ?? "Could not save your practice answer.");
       setPracticeFeedback((old) => ({ ...old, [lesson._id]: "Saved successfully! Your practice answer has been recorded." }));
+      const historyResponse = await fetch(apiBase + "/student-courses/practice-history", { credentials: "include", headers: authHeaders() });
+      const historyPayload = await historyResponse.json() as { data?: { entries: typeof practiceHistory } };
+      if (historyResponse.ok) setPracticeHistory(historyPayload.data?.entries ?? []);
     } catch (err) {
       setPracticeFeedback((old) => ({ ...old, [lesson._id]: err instanceof Error ? err.message : "Could not save your practice answer." }));
     }
@@ -116,6 +123,16 @@ export default function StudentCourseLibrary({ apiBase, authToken = "", initialL
         {(xpHistory?.events ?? []).slice(0, 5).map((event) => <div className="xp-history-row" key={event._id}><div><strong>{event.label}</strong><small>{event.earnedOn}</small></div><b>+{event.xpEarned} XP</b></div>)}
         {(!xpHistory?.events.length) && <p className="muted-small">Complete a lesson or daily practice to start building your XP history.</p>}
       </div>
+    </section>
+    <section className="surface-card student-practice-history">
+      <div className="card-heading"><div><span className="course-builder-eyebrow">YOUR PRACTICE JOURNAL</span><h3>Recent practice answers</h3><p>Your latest saved responses, so you can review your learning.</p></div><span className="tag">{practiceHistory.length} saved</span></div>
+      {practiceHistory.length === 0 ? <p className="muted-small">Your saved practice answers will appear here after you submit one.</p> : <div className="student-practice-history-list">
+        {practiceHistory.slice(0, 5).map((entry) => <article className="student-practice-history-entry" key={entry._id}>
+          <div className="student-practice-history-meta"><strong>{entry.lessonTitle}</strong><span className="tag">{practiceLabels[entry.practiceType]}</span></div>
+          <p>{entry.response}</p>
+          <small>{entry.courseTitle} · {new Date(entry.submittedAt).toLocaleString()}</small>
+        </article>)}
+      </div>}
     </section>
     <div className="course-library-filters">
       <label>Learner category<select value={category} onChange={(event) => setCategory(event.target.value)}><option value="all">All categories</option><option value="kids">Kids</option><option value="adults">Adults</option><option value="working-professionals">Working Professionals</option><option value="job-seekers">Job Seekers</option></select></label>
