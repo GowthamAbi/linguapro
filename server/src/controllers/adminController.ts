@@ -2,15 +2,14 @@ import type { Response } from "express";
 import type { AuthenticatedRequest } from "../middleware/authenticate";
 import { User } from "../models/User";
 import { LearningProgress } from "../models/LearningProgress";
+import { Course } from "../models/Course";
 
 export async function overview(_request: AuthenticatedRequest, response: Response): Promise<void> {
-  const [totalUsers, premiumUsers, activeLearners, totalXp] = await Promise.all([
-    User.countDocuments(),
-    User.countDocuments({ plan: "Premium" }),
-    User.countDocuments({ totalXp: { $gt: 0 } }),
-    User.aggregate([{ $group: { _id: null, total: { $sum: "$totalXp" } } }]),
+  const [totalUsers, premiumUsers, activeLearners, totalXp, totalTeachers, totalCourses] = await Promise.all([
+    User.countDocuments(), User.countDocuments({ plan: "Premium" }), User.countDocuments({ totalXp: { $gt: 0 } }),
+    User.aggregate([{ $group: { _id: null, total: { $sum: "$totalXp" } } }]), User.countDocuments({ role: "teacher" }), Course.countDocuments({ status: "published" }),
   ]);
-  response.json({ data: { totalUsers, premiumUsers, freeUsers: totalUsers - premiumUsers, activeLearners, totalXp: totalXp[0]?.total ?? 0 } });
+  response.json({ data: { totalUsers, totalTeachers, totalCourses, premiumUsers, freeUsers: totalUsers - premiumUsers, activeLearners, totalXp: totalXp[0]?.total ?? 0 } });
 }
 
 export async function listUsers(request: AuthenticatedRequest, response: Response): Promise<void> {
