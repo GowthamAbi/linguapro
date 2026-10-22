@@ -445,3 +445,12 @@ input, select { width: 100%; min-height: 42px; padding: 10px 11px; border: 1px s
 .student-practice-panel textarea:focus { outline: 2px solid #b9a8ff; outline-offset: 1px; }
 .student-practice-panel .button { justify-self: start; min-height: 35px; font-size: 11px; }
 .student-practice-panel .student-practice-feedback { padding: 9px 10px; border-radius: 7px; color: #365c48; background: #eaf8ef; }
+
+
+/* Student practice journal */
+.student-practice-history { margin: 1rem 0 1.25rem; }
+.student-practice-history-list { display: grid; gap: .75rem; }
+.student-practice-history-entry { padding: .9rem 1rem; border: 1px solid var(--border-color, #dfe4ea); border-radius: 12px; min-width: 0; }
+.student-practice-history-meta { display: flex; align-items: center; justify-content: space-between; gap: .75rem; flex-wrap: wrap; }
+.student-practice-history-entry p { margin: .65rem 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.student-practice-history-entry small { color: var(--muted, #667085); font-size: .8rem; }
