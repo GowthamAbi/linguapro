@@ -52,7 +52,8 @@ function readStored<T>(key: string, fallback: T): T {
 
 function pageFromPath(pathname: string): Page {
   const path = pathname.replace(/\/+$/, "") || "/";
-  if (path === "/owner" || path.startsWith("/admin/")) return "owner";
+  if (path === "/owner" || (path.startsWith("/admin/") && path !== "/admin/signin")) return "owner";
+  if (path === "/admin/signin") return "owner";
   if (path === "/teacher") return "teacher";
   if (path === "/student" || path === "/" || path === "/dashboard" || path === "/onboarding") return "dashboard";
   if (path === "/features" || path === "/courses" || path.startsWith("/courses/")) return "courses";
@@ -116,7 +117,7 @@ function App() {
   const [spokenTranscript, setSpokenTranscript] = useState("");
   const [coachCorrect, setCoachCorrect] = useState<boolean | null>(null);
   const [coachAttempts, setCoachAttempts] = useState(0);
-  const [authMode, setAuthMode] = useState<"login" | "register" | null>(() => window.location.pathname === "/register" ? "register" : (window.location.pathname === "/login" || window.location.pathname.startsWith("/admin/") || window.location.pathname === "/owner") ? "login" : null);
+  const [authMode, setAuthMode] = useState<"login" | "register" | null>(() => window.location.pathname === "/register" ? "register" : (window.location.pathname === "/login" || window.location.pathname === "/student/signin" || window.location.pathname === "/admin/signin" || window.location.pathname.startsWith("/admin/") || window.location.pathname === "/owner") ? "login" : null);
   const [authName, setAuthName] = useState("");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
@@ -246,7 +247,7 @@ function App() {
           setAuthenticated(true);
           setProfile((current) => ({ ...current, ...user, role: user.role ?? "student" }));
           const requestedRolePath = window.location.pathname;
-          if (["/owner", "/teacher", "/student"].includes(requestedRolePath) || requestedRolePath.startsWith("/admin/")) {
+          if (["/owner", "/teacher", "/student"].includes(requestedRolePath) || requestedRolePath.startsWith("/admin/") || requestedRolePath === "/student/signin") {
             const destination = user.role === "owner" ? "/owner" : user.role === "teacher" ? "/teacher" : "/student";
             const destinationPage: Page = user.role === "owner" ? "owner" : user.role === "teacher" ? "teacher" : "dashboard";
             if (requestedRolePath !== destination) window.history.replaceState({}, "", destination);
@@ -479,9 +480,9 @@ function App() {
       setAuthenticated(true);
       const signedInRole = payload.data?.user?.role ?? "student";
       setAuthMode(null);
-      if (signedInRole === "owner") { const section = window.location.pathname.startsWith("/admin/") ? ownerSectionFromPath(window.location.pathname) : "overview"; setOwnerSection(section); if (!window.location.pathname.startsWith("/admin/")) window.history.replaceState({}, "", "/admin/overview"); setPage("owner"); }
+      if (signedInRole === "owner") { const section = window.location.pathname.startsWith("/admin/") && window.location.pathname !== "/admin/signin" ? ownerSectionFromPath(window.location.pathname) : "overview"; setOwnerSection(section); if (!window.location.pathname.startsWith("/admin/") || window.location.pathname === "/admin/signin") window.history.replaceState({}, "", "/admin/overview"); setPage("owner"); }
       else if (signedInRole === "teacher") { window.history.replaceState({}, "", "/teacher"); setPage("teacher"); }
-      else { window.history.replaceState({}, "", "/student"); setPage("dashboard"); }
+      else { window.history.replaceState({}, "", "/dashboard"); setPage("dashboard"); }
       await loadServerProgress();
       setMessage("You are signed in.");
     } catch (error) {
