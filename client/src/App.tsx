@@ -51,7 +51,7 @@ function readStored<T>(key: string, fallback: T): T {
 }
 
 function pageFromPath(pathname: string): Page {
-  const path = pathname.replace(/\\/+$/, "") || "/";
+  const path = pathname.replace(/\/+$/, "") || "/";
   if (path === "/owner") return "owner";
   if (path === "/teacher") return "teacher";
   if (path === "/student" || path === "/") return "dashboard";
