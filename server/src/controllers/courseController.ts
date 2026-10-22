@@ -310,13 +310,40 @@ export async function getTeacherCourseProgress(request: AuthenticatedRequest, re
 
 
 export async function getStudentXpHistory(request: AuthenticatedRequest, response: Response): Promise<void> {
-  const events = await XpEvent.find({ userId: request.userId }).sort({ createdAt: -1 }).limit(100).lean();
+  const [events, user] = await Promise.all([
+    XpEvent.find({ userId: request.userId }).sort({ createdAt: -1 }).limit(100).lean(),
+    User.findById(request.userId).select("totalXp dailyXpGoal"),
+  ]);
   const now = new Date();
+  const today = now.toISOString().slice(0, 10);
   const weekly = Array.from({ length: 7 }, (_, index) => {
     const date = new Date(now);
-    date.setDate(now.getDate() - (6 - index));
+    date.setUTCDate(now.getUTCDate() - (6 - index));
     const key = date.toISOString().slice(0, 10);
     return { date: key, day: date.toLocaleDateString("en", { weekday: "short", timeZone: "UTC" }), xp: events.filter((event) => event.earnedOn === key).reduce((sum, event) => sum + event.xpEarned, 0) };
   });
-  response.json({ data: { events, weekly, totalXp: (await User.findById(request.userId).select("totalXp"))?.totalXp ?? 0 } });
+  const activeDates = new Set(events.map((event) => event.earnedOn).filter(Boolean));
+  let streakDays = 0;
+  const cursor = new Date(now);
+  if (!activeDates.has(today)) cursor.setUTCDate(cursor.getUTCDate() - 1);
+  while (activeDates.has(cursor.toISOString().slice(0, 10))) {
+    streakDays += 1;
+    cursor.setUTCDate(cursor.getUTCDate() - 1);
+  }
+  const todayXp = weekly.find((day) => day.date === today)?.xp ?? 0;
+  response.json({ data: { events, weekly, totalXp: user?.totalXp ?? 0, dailyXpGoal: user?.dailyXpGoal ?? 20, todayXp, streakDays, activeDaysThisWeek: weekly.filter((day) => day.xp > 0).length } });
+}
+
+export async function updateStudentLearningGoal(request: AuthenticatedRequest, response: Response): Promise<void> {
+  const parsed = z.object({ dailyXpGoal: z.number().int().refine((value) => [10, 20, 30, 50].includes(value)) }).safeParse(request.body);
+  if (!parsed.success) {
+    response.status(400).json({ message: "Choose a daily goal of 10, 20, 30, or 50 XP." });
+    return;
+  }
+  const user = await User.findByIdAndUpdate(request.userId, { $set: { dailyXpGoal: parsed.data.dailyXpGoal } }, { new: true }).select("dailyXpGoal");
+  if (!user) {
+    response.status(404).json({ message: "Student account not found." });
+    return;
+  }
+  response.json({ message: "Daily learning goal saved.", data: { dailyXpGoal: user.dailyXpGoal } });
 }
