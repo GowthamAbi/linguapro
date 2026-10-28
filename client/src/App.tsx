@@ -351,7 +351,14 @@ function App() {
       });
       const payload = await response.json() as { message?: string; data?: { speakingSecondsToday?: number } };
       if (!response.ok) throw new Error(payload.message ?? "Speaking time could not be saved.");
-      if (payload.data) setSpeakingSecondsToday(Number(payload.data.speakingSecondsToday ?? 0));
+      if (payload.data) {
+        const savedSeconds = Number(payload.data.speakingSecondsToday ?? 0);
+        setSpeakingSecondsToday(savedSeconds);
+        const activityDate = new Date().toISOString().slice(0, 10);
+        setSpeakingHistory((history) => history.some((item) => item.activityDate === activityDate)
+          ? history.map((item) => item.activityDate === activityDate ? { ...item, speakingSeconds: savedSeconds } : item)
+          : [{ activityDate, speakingSeconds: savedSeconds, sessionsCompleted: 1 }, ...history].slice(0, 30));
+      }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Speaking time could not be saved.");
     }
