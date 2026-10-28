@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { BookOpen, Check, ChevronRight, CircleHelp, LockKeyhole, Mic, Play, RotateCcw, Sparkles, Star, Volume2 } from "lucide-react";
+import { Check, ChevronRight, CircleHelp, LockKeyhole, Mic, RotateCcw, Volume2 } from "lucide-react";
 import type { LearningLevel } from "../types";
 
 type Props = {
@@ -294,16 +294,10 @@ const lessonSeeds: Array<Omit<Lesson, "id" | "level" | "quiz"> & { level: Learni
 ];
 
 const levelOrder: LearningLevel[] = ["Basic", "Intermediate", "Advanced"];
-const lessonTopics: Record<LearningLevel, string[]> = {
-  Basic: ["First sentence", "Be verbs", "Present simple", "Negatives", "Questions"],
-  Intermediate: ["Present continuous", "Past simple", "Future plans", "Present perfect", "Comparisons"],
-  Advanced: ["Polite requests", "Passive voice", "Conditionals", "Connectors", "Fluency challenge"],
-};
-
 function makeLesson(level: LearningLevel, index: number): Lesson {
   const seeds = lessonSeeds.filter((item) => item.level === level);
   const seed = seeds[index % seeds.length];
-  return { ...seed, id: level.toLowerCase() + "-" + (index + 1), level, title: lessonTopics[level][index] ?? seed.title,
+  return { ...seed, id: level.toLowerCase() + "-" + (index + 1), level,
     subtitle: seed.subtitle, emoji: seed.emoji };
 }
 const lessons: Lesson[] = levelOrder.flatMap((level) => Array.from({ length: 5 }, (_, index) => makeLesson(level, index)));
@@ -419,7 +413,7 @@ export default function StudentLearningRoadmap({ mode, initialLevel, onLevelDete
   }
 
   if (activeLesson) {
-    const blanksCorrect = activeLesson.blanks.every((item, index) => blankAnswers[index] === item.answer);
+    const blanksCorrect = activeLesson.blanks.every((item, index) => blankAnswers[index] === item.answer && blankChecked[index]);
     const arrangeCorrect = activeLesson.arrange.every((item, index) => (arrangeAnswers[index] ?? []).join(" ") === item.answer);
     const quizCorrect = activeLesson.quiz.filter((question, index) => lessonQuizAnswers[index] === question.answer).length;
     const lessonPassed = blanksCorrect && arrangeCorrect && lessonQuizSubmitted && quizCorrect >= Math.ceil(activeLesson.quiz.length * 0.67);
