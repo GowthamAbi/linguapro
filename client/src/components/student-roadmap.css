@@ -60,3 +60,12 @@
 .hero-secondary-action { background:#ffffff1f; color:#fff; border-color:#ffffff65; }
 .hero-secondary-action:hover { background:#ffffff2e; }
 @media(max-width:760px) { .hero-actions-row { align-items:stretch; flex-direction:column; } .hero-actions-row .button { width:100%; } }
+
+.lesson-visual-strip { display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px;margin:12px 0 20px; }
+.lesson-visual-frame { display:flex;flex-direction:column;align-items:flex-start;gap:7px;min-width:0;min-height:142px;padding:12px;border:1px solid #e8e1f6;border-radius:14px;background:linear-gradient(155deg,#fff,#faf7ff);text-align:left;transition:transform .15s,border-color .15s; }
+.lesson-visual-frame:hover { transform:translateY(-3px);border-color:#b7a0f2; }
+.lesson-frame-number { color:#9b90ad;font-size:8px;font-weight:850;letter-spacing:.8px; }
+.lesson-frame-icon { width:42px;height:42px;display:grid;place-items:center;border-radius:13px;background:#efe8ff;font-size:24px; }
+.lesson-visual-frame strong { font-size:11px;line-height:1.3; }.lesson-visual-frame small { color:#80768f;font-size:10px;line-height:1.45;overflow-wrap:anywhere; }
+@media(max-width:760px) { .lesson-visual-strip { grid-template-columns:repeat(3,minmax(0,1fr));gap:7px; }.lesson-visual-frame { min-height:125px;padding:9px; }.lesson-frame-icon { width:36px;height:36px;font-size:21px; } }
+@media(max-width:390px) { .lesson-visual-strip { grid-template-columns:repeat(2,minmax(0,1fr)); } }
