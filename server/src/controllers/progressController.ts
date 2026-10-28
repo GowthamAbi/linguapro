@@ -19,7 +19,7 @@ export async function getProgress(
     LearningProgress.find({ userId: request.userId }).sort({ createdAt: -1 }).limit(100),
     User.findById(request.userId).select("totalXp currentStreak lastActiveDate"),
     SpeakingActivity.findOne({ userId: request.userId, activityDate: today }),
-    SpeakingActivity.find({ userId: request.userId }).sort({ activityDate: -1 }).limit(30),
+    SpeakingActivity.find({ userId: request.userId }).sort({ activityDate: -1 }).limit(60),
   ]);
 
   response.json({
