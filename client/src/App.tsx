@@ -730,7 +730,7 @@ function App() {
               <div className="date-chip">{new Date().toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</div>
             </div>
             <section className="hero-card">
-              <div className="hero-copy"><div className="hero-eyebrow"><Sparkles size={14} /> YOUR NEXT STEP</div><h2>Build confidence, one conversation at a time.</h2><p>Practise useful phrases, learn new words, and speak a little more every day.</p><button className="button button-white" onClick={() => navigate("speaking")}>Start speaking practice <ChevronRight size={17} /></button></div>
+              <div className="hero-copy"><div className="hero-eyebrow"><Sparkles size={14} /> YOUR NEXT STEP</div><h2>Build confidence, one conversation at a time.</h2><p>Practise useful phrases, learn new words, and speak a little more every day.</p><div className="hero-actions-row"><button className="button button-white" onClick={() => navigate("placement")}>Take my level test <ChevronRight size={17} /></button><button className="button button-white hero-secondary-action" onClick={() => navigate("courses")}>Open learning map <BookOpen size={16} /></button></div></div>
               <div className="hero-illustration"><div className="bubble bubble-one">Hello!</div><div className="bubble bubble-two">வணக்கம்</div><div className="hero-circle"><Languages size={55} /></div><Sparkles className="hero-sparkle" size={25} /></div>
             </section>
             <section className="stats-grid">
@@ -777,6 +777,7 @@ function App() {
             initialLevel={profile.level}
             onLevelDetermined={(level) => { void savePlacementLevel(level); }}
             onOpenRoadmap={() => navigate("courses")}
+            onOpenTest={() => navigate("placement")}
             onStartSpeaking={(phrase) => { if (phrase) setSpokenTranscript(phrase); navigate("speaking"); }}
           />}
 
