@@ -4,6 +4,7 @@ import type { AuthenticatedRequest } from "../middleware/authenticate";
 import { LearningProgress } from "../models/LearningProgress";
 import { User } from "../models/User";
 import { XpEvent } from "../models/XpEvent";
+import { SpeakingActivity } from "../models/SpeakingActivity";
 
 const taskRewards: Record<string, number> = { words: 10, speak: 15, listen: 10, review: 5 };
 const taskSchema = z.object({ taskId: z.enum(["words", "speak", "listen", "review"]) });
@@ -14,8 +15,12 @@ export async function getProgress(
   response: Response,
 ): Promise<void> {
   const today = todayDate();
-  const history = await LearningProgress.find({ userId: request.userId }).sort({ createdAt: -1 }).limit(100);
-  const user = await User.findById(request.userId).select("totalXp currentStreak lastActiveDate");
+  const [history, user, speakingToday, speakingHistory] = await Promise.all([
+    LearningProgress.find({ userId: request.userId }).sort({ createdAt: -1 }).limit(100),
+    User.findById(request.userId).select("totalXp currentStreak lastActiveDate"),
+    SpeakingActivity.findOne({ userId: request.userId, activityDate: today }),
+    SpeakingActivity.find({ userId: request.userId }).sort({ activityDate: -1 }).limit(30),
+  ]);
 
   response.json({
     data: {
@@ -23,6 +28,8 @@ export async function getProgress(
       currentStreak: user?.currentStreak ?? 0,
       today,
       completedToday: history.filter((item) => item.completedOn === today),
+      speakingSecondsToday: speakingToday?.speakingSeconds ?? 0,
+      speakingHistory,
       history,
     },
   });
