@@ -7,6 +7,7 @@ type Props = {
   initialLevel: LearningLevel;
   onLevelDetermined: (level: LearningLevel) => void;
   onOpenRoadmap: () => void;
+  onOpenTest: () => void;
   onStartSpeaking: (phrase?: string) => void;
 };
 
@@ -310,7 +311,7 @@ function readPlacementLevel(): LearningLevel | null {
   return value === "Basic" || value === "Intermediate" || value === "Advanced" ? value : null;
 }
 
-export default function StudentLearningRoadmap({ mode, initialLevel, onLevelDetermined, onOpenRoadmap, onStartSpeaking }: Props) {
+export default function StudentLearningRoadmap({ mode, initialLevel, onLevelDetermined, onOpenRoadmap, onOpenTest, onStartSpeaking }: Props) {
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [testSubmitted, setTestSubmitted] = useState(false);
   const [testLevel, setTestLevel] = useState<LearningLevel | null>(readPlacementLevel);
@@ -435,7 +436,7 @@ export default function StudentLearningRoadmap({ mode, initialLevel, onLevelDete
   const stageLessons = levelOrder.map((level) => ({ level, lessons: visibleLessons.filter((lesson) => lesson.level === level) })).filter((stage) => stage.lessons.length);
   return <div className="roadmap-page">
     <div className="roadmap-heading"><div><span className="roadmap-kicker">YOUR CANDY-STYLE LEARNING JOURNEY</span><h1>Every lesson unlocks your next step</h1><p>Your placement level: <strong>{currentLevel}</strong>. Finish a lesson and pass its test to move along the path.</p></div><div className="roadmap-heading-icon">🗺️</div></div>
-    {!readPlacementLevel() && <div className="roadmap-callout"><CircleHelp size={20} /><div><strong>Not sure about your level yet?</strong><p>Take the placement test to start at the right stage.</p></div><button className="button button-primary" onClick={() => { setTestSubmitted(false); setAnswers({}); onLevelDetermined(initialLevel); onOpenRoadmap(); }}>Take level test <ChevronRight size={16} /></button></div>}
+    {!readPlacementLevel() && <div className="roadmap-callout"><CircleHelp size={20} /><div><strong>Not sure about your level yet?</strong><p>Take the placement test to start at the right stage.</p></div><button className="button button-primary" onClick={onOpenTest}>Take level test <ChevronRight size={16} /></button></div>}
     <div className="roadmap-summary-cards"><div><span>🌱</span><strong>{completed.filter((id) => id.startsWith("basic-")).length}/5</strong><small>Basic levels</small></div><div><span>🚀</span><strong>{completed.filter((id) => id.startsWith("intermediate-")).length}/5</strong><small>Intermediate levels</small></div><div><span>🏆</span><strong>{completed.filter((id) => id.startsWith("advanced-")).length}/5</strong><small>Advanced levels</small></div></div>
     {stageLessons.map((stage) => <section className="roadmap-stage" key={stage.level}><div className="roadmap-stage-heading"><span>{stageEmojis[stage.level]}</span><div><h2>{stage.level}</h2><p>{stageDescriptions[stage.level]}</p></div><span className="roadmap-stage-count">{stage.lessons.filter((lesson) => completed.includes(lesson.id)).length}/{stage.lessons.length} complete</span></div><div className="candy-path">{stage.lessons.map((lesson, index) => { const isComplete = completed.includes(lesson.id); const isUnlocked = unlocked.has(lesson.id); return <div className={"candy-node-wrap " + (index % 2 ? "node-offset" : "")} key={lesson.id}><div className="candy-node-connector" /><button type="button" className={"candy-node " + (isComplete ? "node-complete" : isUnlocked ? "node-unlocked" : "node-locked")} disabled={!isUnlocked} onClick={() => { setActiveLessonId(lesson.id); setBlankAnswers({}); setBlankChecked({}); setArrangeAnswers({}); setLessonQuizAnswers({}); setLessonQuizSubmitted(false); }}><span className="candy-node-icon">{isComplete ? "⭐" : isUnlocked ? lesson.emoji : <LockKeyhole size={18} />}</span><span className="candy-node-number">LEVEL {index + 1}</span><strong>{lesson.title}</strong><small>{isComplete ? "Completed" : isUnlocked ? "Tap to learn" : "Complete the previous level"}</small></button></div>; })}</div></section>)}
     <section className="roadmap-next-step"><div className="roadmap-heading-icon">🎓</div><div><h2>Keep moving forward</h2><p>Learn the pattern, try the exercises, speak out loud and pass the quick test to unlock the next level.</p></div><button className="button button-primary" onClick={() => { const nextLesson = visibleLessons.find((lesson) => unlocked.has(lesson.id) && !completed.includes(lesson.id)); if (nextLesson) setActiveLessonId(nextLesson.id); else onStartSpeaking(); }}>Continue learning <ChevronRight size={16} /></button></section>
