@@ -88,3 +88,45 @@ export async function completeTask(
     throw error;
   }
 }
+
+const speakingSessionSchema = z.object({
+  durationSeconds: z.number().int().min(1).max(3600),
+  phrasesCompleted: z.number().int().min(1).max(50),
+  attempts: z.number().int().min(1).max(200),
+});
+
+export async function recordSpeakingActivity(
+  request: AuthenticatedRequest,
+  response: Response,
+): Promise<void> {
+  const parsed = speakingSessionSchema.safeParse(request.body);
+  if (!parsed.success) {
+    response.status(400).json({ message: "Provide a valid completed speaking session." });
+    return;
+  }
+
+  const today = todayDate();
+  const activity = await SpeakingActivity.findOneAndUpdate(
+    { userId: request.userId, activityDate: today },
+    {
+      $inc: {
+        speakingSeconds: parsed.data.durationSeconds,
+        sessionsCompleted: 1,
+        phrasesCompleted: parsed.data.phrasesCompleted,
+        attempts: parsed.data.attempts,
+      },
+      $setOnInsert: { userId: request.userId, activityDate: today },
+    },
+    { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true },
+  );
+
+  response.status(201).json({
+    message: "Speaking practice time saved.",
+    data: {
+      speakingSecondsToday: activity.speakingSeconds,
+      sessionsCompleted: activity.sessionsCompleted,
+      phrasesCompleted: activity.phrasesCompleted,
+      attempts: activity.attempts,
+    },
+  });
+}
