@@ -118,6 +118,12 @@ function App() {
   const [spokenTranscript, setSpokenTranscript] = useState("");
   const [coachCorrect, setCoachCorrect] = useState<boolean | null>(null);
   const [coachAttempts, setCoachAttempts] = useState(0);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState<0 | 1 | 2>(0);
+  const [onboardingAudience, setOnboardingAudience] = useState<"Kids" | "Adults" | "Job Professionals" | "Homemakers">("Job Professionals");
+  const [onboardingGoal, setOnboardingGoal] = useState<"Daily conversations" | "Career growth" | "Confidence" | "School and family">("Career growth");
+  const [onboardingMinutes, setOnboardingMinutes] = useState<10 | 15 | 20 | 30 | 60>(20);
+  const [onboardingBusy, setOnboardingBusy] = useState(false);
   const [authMode, setAuthMode] = useState<"login" | "register" | null>(() => window.location.pathname === "/register" ? "register" : (window.location.pathname === "/login" || window.location.pathname === "/student/signin" || window.location.pathname === "/admin/signin" || window.location.pathname.startsWith("/admin/") || window.location.pathname === "/owner") ? "login" : null);
   const [authName, setAuthName] = useState("");
   const [authEmail, setAuthEmail] = useState("");
@@ -455,6 +461,7 @@ function App() {
 
   async function submitAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const wasRegistering = authMode === "register";
     setBusy(true);
     setMessage("");
     try {
@@ -475,21 +482,61 @@ function App() {
       const payload = await response.json() as { message?: string; token?: string; data?: { user?: { name?: string; email?: string; role?: "student" | "teacher" | "owner" } } };
       if (!response.ok) throw new Error(payload.message ?? "Unable to sign in.");
       if (payload.token) { sessionStorage.setItem("linguapro-token", payload.token); setAuthToken(payload.token); }
-      if (payload.data?.user?.name) saveProfile("name", payload.data.user.name);
-      if (payload.data?.user?.email) saveProfile("email", payload.data.user.email);
-      if (payload.data?.user?.role) saveProfile("role", payload.data.user.role);
+      const signedInUser = payload.data?.user;
+      if (signedInUser) {
+        setProfile((current) => {
+          const next = { ...current, ...signedInUser, role: signedInUser.role ?? "student" };
+          localStorage.setItem("linguapro-profile", JSON.stringify(next));
+          return next;
+        });
+      }
       setAuthenticated(true);
       const signedInRole = payload.data?.user?.role ?? "student";
       setAuthMode(null);
       if (signedInRole === "owner") { const section = window.location.pathname.startsWith("/admin/") && window.location.pathname !== "/admin/signin" ? ownerSectionFromPath(window.location.pathname) : "overview"; setOwnerSection(section); if (!window.location.pathname.startsWith("/admin/") || window.location.pathname === "/admin/signin") window.history.replaceState({}, "", "/admin/overview"); setPage("owner"); }
       else if (signedInRole === "teacher") { window.history.replaceState({}, "", "/teacher"); setPage("teacher"); }
-      else { window.history.replaceState({}, "", "/dashboard"); setPage("dashboard"); }
+      else { window.history.replaceState({}, "", "/dashboard"); setPage("dashboard"); if (wasRegistering) { setOnboardingStep(0); setOnboardingOpen(true); } }
       await loadServerProgress();
       setMessage("You are signed in.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to sign in.");
     } finally {
       setBusy(false);
+    }
+  }
+
+
+  async function saveOnboarding() {
+    setOnboardingBusy(true);
+    setMessage("");
+    const payload = {
+      audience: onboardingAudience,
+      learningGoal: onboardingGoal,
+      dailyGoalMinutes: onboardingMinutes,
+      onboardingCompleted: true,
+      nativeLanguage: "Tamil",
+      targetLanguage: "English",
+    };
+    try {
+      const response = await apiFetch(apiBase + "/profile", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json() as { message?: string; data?: { user?: Partial<UserProfile> } };
+      if (!response.ok) throw new Error(result.message ?? "We could not save your learning preferences. Please try again.");
+      setProfile((current) => {
+        const next = { ...current, ...payload };
+        localStorage.setItem("linguapro-profile", JSON.stringify(next));
+        return next;
+      });
+      setOnboardingOpen(false);
+      setMessage("Your learning path is ready. Let’s start learning!");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not save your preferences.");
+    } finally {
+      setOnboardingBusy(false);
     }
   }
 
@@ -760,6 +807,33 @@ function App() {
           <footer className="app-footer"><span>◈ LinguaPro</span><span>Learn a language. Find your voice.</span><span>Demo · {new Date().getFullYear()}</span></footer>
         </main>
       </div>
+
+
+      {onboardingOpen && authenticated && !isOwner && !isTeacher && <div className="modal-backdrop onboarding-backdrop"><section className="onboarding-modal" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
+        <div className="onboarding-topline"><span className="onboarding-brand-mark">◈</span><span>YOUR PERSONAL LEARNING PATH</span><span className="onboarding-step-count">STEP {onboardingStep + 1} OF 3</span></div>
+        <div className="onboarding-progress"><span style={{ width: ((onboardingStep + 1) / 3 * 100) + "%" }} /></div>
+        {onboardingStep === 0 && <>
+          <span className="marketing-section-kicker">LET’S MAKE THIS PERSONAL</span><h2 id="onboarding-title">Who are you learning for?</h2><p className="onboarding-description">We’ll shape your English practice around your everyday life.</p>
+          <div className="onboarding-choice-grid">
+            {([{value:"Kids",icon:"🎈",title:"Kids",desc:"Fun learning for ages 5–12"},{value:"Adults",icon:"☀️",title:"Adults",desc:"Everyday English confidence"},{value:"Job Professionals",icon:"💼",title:"Job professionals",desc:"Career and workplace English"},{value:"Homemakers",icon:"🌷",title:"Homemakers",desc:"Family and daily conversations"}] as const).map((item) => <button type="button" key={item.value} className={"onboarding-choice " + (onboardingAudience === item.value ? "selected" : "")} onClick={() => setOnboardingAudience(item.value)}><span className="onboarding-choice-icon">{item.icon}</span><span><strong>{item.title}</strong><small>{item.desc}</small></span><span className="onboarding-choice-check">{onboardingAudience === item.value ? <Check size={14} /> : null}</span></button>)}
+          </div>
+        </>}
+        {onboardingStep === 1 && <>
+          <span className="marketing-section-kicker">WHAT MATTERS MOST TO YOU?</span><h2 id="onboarding-title">What’s your main goal?</h2><p className="onboarding-description">Choose the result you want to work towards first.</p>
+          <div className="onboarding-goal-list">
+            {([{value:"Career growth",icon:"🚀",title:"Career growth",desc:"Interviews, meetings and workplace communication"},{value:"Daily conversations",icon:"💬",title:"Daily conversations",desc:"Speak comfortably in real-life situations"},{value:"Confidence",icon:"✨",title:"Build my confidence",desc:"Speak without overthinking every word"},{value:"School and family",icon:"🏡",title:"School and family",desc:"School, shopping, phone calls and healthcare"}] as const).map((item) => <button type="button" key={item.value} className={"onboarding-goal-choice " + (onboardingGoal === item.value ? "selected" : "")} onClick={() => setOnboardingGoal(item.value)}><span>{item.icon}</span><span><strong>{item.title}</strong><small>{item.desc}</small></span><span className="onboarding-choice-check">{onboardingGoal === item.value ? <Check size={14} /> : null}</span></button>)}
+          </div>
+        </>}
+        {onboardingStep === 2 && <>
+          <span className="marketing-section-kicker">A HABIT THAT FITS YOUR DAY</span><h2 id="onboarding-title">How much time can you practise?</h2><p className="onboarding-description">A little practice every day adds up. You can change this later.</p>
+          <div className="onboarding-time-options">{([10,15,20,30,60] as const).map((minutes) => <button type="button" key={minutes} className={"onboarding-time-choice " + (onboardingMinutes === minutes ? "selected" : "")} onClick={() => setOnboardingMinutes(minutes)}><strong>{minutes}</strong><span>min / day</span>{minutes === 20 && <small>RECOMMENDED</small>}</button>)}</div>
+          <div className="onboarding-summary"><span className="onboarding-summary-icon"><Sparkles size={19} /></span><span><strong>Your starting plan</strong><small>{onboardingAudience} · {onboardingGoal} · {onboardingMinutes} minutes daily</small></span></div>
+          <p className="onboarding-tamil-note"><Languages size={15} /> Tamil explanations and English speaking practice are ready for you.</p>
+        </>}
+        {message && <div className="inline-message">{message}</div>}
+        <div className="onboarding-actions">{onboardingStep > 0 && <button className="button button-outline" type="button" disabled={onboardingBusy} onClick={() => setOnboardingStep((step) => (step - 1) as 0 | 1 | 2)}>Back</button>}{onboardingStep < 2 ? <button className="button button-primary" type="button" onClick={() => setOnboardingStep((step) => (step + 1) as 0 | 1 | 2)}>Continue <ChevronRight size={16} /></button> : <button className="button button-primary" type="button" disabled={onboardingBusy} onClick={() => void saveOnboarding()}>{onboardingBusy ? "Saving your path…" : "Start learning"} <ChevronRight size={16} /></button>}</div>
+        <button className="onboarding-skip" type="button" disabled={onboardingBusy} onClick={() => { setOnboardingOpen(false); setMessage("You can personalise your learning path later in Profile & settings."); }}>Skip for now</button>
+      </section></div>}
 
       {authMode && <div className="modal-backdrop" onClick={() => setAuthMode(null)}><section className="auth-modal" onClick={(event) => event.stopPropagation()}><button className="modal-close icon-button" onClick={() => setAuthMode(null)} aria-label="Close"><X /></button><div className="auth-logo">◈</div><div className="eyebrow">WELCOME TO LINGUAPRO</div><h2>{authMode === "register" ? "Create your account" : "Welcome back"}</h2><p className="muted-small">Your next conversation starts here.</p><form onSubmit={submitAuth}>{authMode === "register" && <label>Full name<input required minLength={2} value={authName} onChange={(event) => setAuthName(event.target.value)} placeholder="Your name" /></label>}<label>Email address<input required type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder="you@example.com" /></label><label>Password<input required minLength={8} type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} placeholder="At least 8 characters" /></label><button className="button button-primary full-width" disabled={busy}>{busy ? "Please wait…" : authMode === "register" ? "Create account" : "Sign in"} <ChevronRight size={16} /></button></form>{message && <div className="inline-message">{message}</div>}<p className="auth-switch">{authMode === "register" ? "Already have an account?" : "New to LinguaPro?"} <button className="inline-link" onClick={() => { setAuthMode(authMode === "register" ? "login" : "register"); setMessage(""); }}>{authMode === "register" ? "Sign in" : "Create account"}</button></p><p className="notice"><LockKeyhole size={13} /> Account access works after backend deployment.</p></section></div>}
     </div>
