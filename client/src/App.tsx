@@ -365,6 +365,7 @@ function App() {
     type Recognition = {
       lang: string;
       interimResults?: boolean;
+      maxAlternatives?: number;
       onresult: ((event: RecognitionResult) => void) | null;
       onerror: ((event: RecognitionError) => void) | null;
       start: () => void;
@@ -381,6 +382,7 @@ function App() {
     const recognition = new RecognitionAPI();
     recognition.lang = profile.targetLanguage === "Hindi" ? "hi-IN" : profile.targetLanguage === "Malayalam" ? "ml-IN" : profile.targetLanguage === "Kannada" ? "kn-IN" : profile.targetLanguage === "Telugu" ? "te-IN" : "en-IN";
     recognition.interimResults = false;
+    recognition.maxAlternatives = 3;
     let handledResult = false;
 
     const speakFeedback = (text: string, onFinished: () => void) => {
@@ -407,8 +409,15 @@ function App() {
       if (handledResult) return;
       handledResult = true;
       setIsListening(false);
-      const spoken = (event.results[0]?.[0]?.transcript ?? "").trim();
       const normalize = (value: string) => value.toLocaleLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim();
+      const candidates = Array.from(event.results[0] ?? []).map((candidate) => candidate.transcript.trim()).filter(Boolean);
+      const expectedForScoring = normalize(phrase.phrase).split(" ").filter(Boolean);
+      const candidateScore = (candidate: string) => {
+        const candidateWords = normalize(candidate).split(" ").filter(Boolean);
+        const matchedWords = expectedForScoring.filter((word) => candidateWords.includes(word)).length;
+        return expectedForScoring.length ? matchedWords / expectedForScoring.length + (normalize(candidate) === normalize(phrase.phrase) ? 1 : 0) : 0;
+      };
+      const spoken = candidates.sort((left, right) => candidateScore(right) - candidateScore(left))[0] ?? "";
       const expectedWords = normalize(phrase.phrase).split(" ").filter(Boolean);
       const spokenWords = normalize(spoken).split(" ").filter(Boolean);
       const missingWords = expectedWords.filter((word) => !spokenWords.includes(word));
