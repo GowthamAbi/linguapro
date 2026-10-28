@@ -116,6 +116,7 @@ function App() {
   const [sessionComplete, setSessionComplete] = useState(false);
   const speakingStartedAtRef = useRef<number | null>(null);
   const [speakingSecondsToday, setSpeakingSecondsToday] = useState(0);
+  const [speakingHistory, setSpeakingHistory] = useState<Array<{ activityDate: string; speakingSeconds: number; sessionsCompleted?: number }>>([]);
   const [message, setMessage] = useState("");
   const [spokenTranscript, setSpokenTranscript] = useState("");
   const [coachCorrect, setCoachCorrect] = useState<boolean | null>(null);
@@ -230,12 +231,13 @@ function App() {
     try {
       const response = await apiFetch(apiBase + "/progress", { credentials: "include" });
       if (!response.ok) return;
-      const payload = await response.json() as { data?: { totalXp?: number; currentStreak?: number; completedToday?: Array<{ taskId: string }>; speakingSecondsToday?: number } };
+      const payload = await response.json() as { data?: { totalXp?: number; currentStreak?: number; completedToday?: Array<{ taskId: string }>; speakingSecondsToday?: number; speakingHistory?: Array<{ activityDate: string; speakingSeconds: number; sessionsCompleted?: number }> } };
       if (payload.data) {
         setServerXp(Number(payload.data.totalXp ?? 0));
         setServerStreak(Number(payload.data.currentStreak ?? 0));
         setServerCompletedIds((payload.data.completedToday ?? []).map((item) => item.taskId));
         setSpeakingSecondsToday(Number(payload.data.speakingSecondsToday ?? 0));
+        setSpeakingHistory(payload.data.speakingHistory ?? []);
       }
     } catch { /* Keep the local demo usable if the API is temporarily unavailable. */ }
   }
@@ -271,6 +273,9 @@ function App() {
   const completed = tasks.filter((task) => task.completed || serverCompletedIds.includes(task.id)).length;
   const xp = serverXp ?? tasks.filter((task) => task.completed).reduce((sum, task) => sum + task.xp, 0);
   const phrase = phrases[phraseIndex];
+  const speakingSecondsLast7Days = speakingHistory.filter((item) => item.activityDate >= new Date(Date.now() - 6 * 86_400_000).toISOString().slice(0, 10)).reduce((sum, item) => sum + item.speakingSeconds, 0);
+  const speakingSecondsPrevious7Days = speakingHistory.filter((item) => { const date = new Date(item.activityDate + "T00:00:00Z").getTime(); return date >= Date.now() - 13 * 86_400_000 && date < Date.now() - 6 * 86_400_000; }).reduce((sum, item) => sum + item.speakingSeconds, 0);
+  const speakingSecondsLast30Days = speakingHistory.filter((item) => item.activityDate >= new Date(Date.now() - 29 * 86_400_000).toISOString().slice(0, 10)).reduce((sum, item) => sum + item.speakingSeconds, 0);
 
   function navigate(next: Page) {
     const path = next === "owner" ? "/admin/overview" : next === "teacher" ? "/teacher" : next === "dashboard" ? "/dashboard" : next === "plans" ? "/pricing" : next === "profile" ? "/settings" : next === "vocabulary" ? "/practice" : "/" + next;
@@ -815,7 +820,8 @@ function App() {
 
 {page === "progress" && <>
             <PageTitle eyebrow="YOUR ACHIEVEMENTS" title="My progress" subtitle="Celebrate the small wins that build lasting skills." />
-            <div className="stats-grid"><StatCard icon={<Flame />} label="Practice streak" value={(serverStreak || (completed ? 1 : 0)) + (serverStreak === 1 || (!serverStreak && completed) ? " day" : " days")} detail="Days practised in a row" /><StatCard icon={<Star />} label="Total XP" value={String(xp)} detail="Points earned" /><StatCard icon={<Check />} label="Tasks completed" value={String(completed)} detail="In this demo session" /></div>
+            <div className="stats-grid"><StatCard icon={<Flame />} label="Practice streak" value={(serverStreak || (completed ? 1 : 0)) + (serverStreak === 1 || (!serverStreak && completed) ? " day" : " days")} detail="Days practised in a row" /><StatCard icon={<Star />} label="Total XP" value={String(xp)} detail="Points earned" /><StatCard icon={<Check />} label="Tasks completed" value={String(completed)} detail="In this demo session" /><StatCard icon={<Mic />} label="Speaking today" value={Math.floor(speakingSecondsToday / 60) + "m " + (speakingSecondsToday % 60) + "s"} detail="Time spent speaking" /></div>
+            <section className="surface-card progress-detail"><h3>Speaking activity</h3><p className="muted-small">Your saved speaking practice time</p><div className="activity-row"><span className="activity-check complete"><Mic size={14} /></span><div className="activity-copy"><strong>Today</strong><span>Speaking practice</span></div><b>{Math.floor(speakingSecondsToday / 60)}m {speakingSecondsToday % 60}s</b></div><div className="activity-row"><span className="activity-check complete"><TrendingUp size={14} /></span><div className="activity-copy"><strong>Last 7 days</strong><span>Weekly speaking total</span></div><b>{Math.floor(speakingSecondsLast7Days / 60)}m</b></div><div className="activity-row"><span className="activity-check"><TrendingUp size={14} /></span><div className="activity-copy"><strong>Previous 7 days</strong><span>{speakingSecondsPrevious7Days === 0 ? "No earlier activity recorded" : (speakingSecondsLast7Days >= speakingSecondsPrevious7Days ? "Up " : "Down ") + Math.round(Math.abs(speakingSecondsLast7Days - speakingSecondsPrevious7Days) / speakingSecondsPrevious7Days * 100) + "% compared with the previous week"}</span><b>{Math.floor(speakingSecondsPrevious7Days / 60)}m</b></div></div><div className="activity-row"><span className="activity-check"><TrendingUp size={14} /></span><div className="activity-copy"><strong>Last 30 days</strong><span>Monthly speaking total</span></div><b>{Math.floor(speakingSecondsLast30Days / 60)}m</b></div></section>
             <section className="surface-card progress-detail"><h3>Daily activity</h3><p className="muted-small">Today's learning plan</p>{tasks.map((task) => <div className="activity-row" key={task.id}><span className={"activity-check " + (task.completed ? "complete" : "")}>{task.completed ? <Check size={15} /> : <Target size={13} />}</span><div className="activity-copy"><strong>{task.title}</strong><span>{task.duration}</span></div><b>{task.completed ? "+" + task.xp + " XP" : "Not started"}</b></div>)}</section>
           </>}
 
