@@ -493,7 +493,11 @@ function App() {
     }
   }
 
-  return (
+  const showLanding = page === "dashboard" && !authenticated && !authMode;
+
+  return showLanding
+    ? <MarketingLanding onLogin={() => setAuthMode("login")} onRegister={() => setAuthMode("register")} />
+    : (
     <div className="app-shell">
       <header className="topbar">
         <button className="icon-button mobile-menu-button" aria-label="Open menu" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X /> : <Menu />}</button>
@@ -758,6 +762,69 @@ function App() {
       </div>
 
       {authMode && <div className="modal-backdrop" onClick={() => setAuthMode(null)}><section className="auth-modal" onClick={(event) => event.stopPropagation()}><button className="modal-close icon-button" onClick={() => setAuthMode(null)} aria-label="Close"><X /></button><div className="auth-logo">◈</div><div className="eyebrow">WELCOME TO LINGUAPRO</div><h2>{authMode === "register" ? "Create your account" : "Welcome back"}</h2><p className="muted-small">Your next conversation starts here.</p><form onSubmit={submitAuth}>{authMode === "register" && <label>Full name<input required minLength={2} value={authName} onChange={(event) => setAuthName(event.target.value)} placeholder="Your name" /></label>}<label>Email address<input required type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder="you@example.com" /></label><label>Password<input required minLength={8} type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} placeholder="At least 8 characters" /></label><button className="button button-primary full-width" disabled={busy}>{busy ? "Please wait…" : authMode === "register" ? "Create account" : "Sign in"} <ChevronRight size={16} /></button></form>{message && <div className="inline-message">{message}</div>}<p className="auth-switch">{authMode === "register" ? "Already have an account?" : "New to LinguaPro?"} <button className="inline-link" onClick={() => { setAuthMode(authMode === "register" ? "login" : "register"); setMessage(""); }}>{authMode === "register" ? "Sign in" : "Create account"}</button></p><p className="notice"><LockKeyhole size={13} /> Account access works after backend deployment.</p></section></div>}
+    </div>
+  );
+}
+
+
+type MarketingLandingProps = { onLogin: () => void; onRegister: () => void };
+
+function MarketingLanding({ onLogin, onRegister }: MarketingLandingProps) {
+  const [audience, setAudience] = useState("Job Professionals");
+  const audiences = [
+    { label: "Kids", detail: "Fun, bite-sized English", icon: "🎈" },
+    { label: "Adults", detail: "Everyday confidence", icon: "☀️" },
+    { label: "Job Professionals", detail: "Career-ready speaking", icon: "💼" },
+    { label: "Homemakers", detail: "English for daily life", icon: "🌷" },
+  ];
+  const audienceCopy: Record<string, string> = {
+    Kids: "Play, listen and speak through short, joyful lessons.",
+    Adults: "Build everyday English with practical phrases and guided practice.",
+    "Job Professionals": "Practise interviews, meetings and confident workplace conversations.",
+    Homemakers: "Learn useful English for shopping, phone calls, school and healthcare.",
+  };
+  return (
+    <div className="marketing-page">
+      <header className="marketing-nav">
+        <button className="marketing-brand" aria-label="LinguaPro home"><span className="marketing-brand-mark">◈</span> Lingua<span>Pro</span></button>
+        <nav aria-label="Main navigation"><a href="#how-it-works">How it works</a><a href="#learning-paths">Learning paths</a><a href="#why-linguapro">Why LinguaPro</a></nav>
+        <div className="marketing-nav-actions"><button className="marketing-signin" onClick={onLogin}>Sign in</button><button className="marketing-nav-cta" onClick={onRegister}>Start for free <ChevronRight size={16} /></button></div>
+      </header>
+      <main>
+        <section className="marketing-hero">
+          <div className="marketing-hero-copy">
+            <div className="marketing-kicker"><span className="marketing-kicker-dot" /> YOUR ENGLISH. YOUR NEXT CHAPTER.</div>
+            <h1>Don’t just learn English.<br /><span>Live it with confidence.</span></h1>
+            <p className="marketing-hero-description">A personal English practice space that helps you learn useful words, speak out loud, get feedback and make progress — one day at a time.</p>
+            <div className="marketing-hero-actions"><button className="marketing-primary-cta" onClick={onRegister}>Start your free journey <ChevronRight size={18} /></button><button className="marketing-secondary-cta" onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })}><span className="marketing-play">▶</span> See how it works</button></div>
+            <div className="marketing-social-proof"><div className="marketing-avatars"><span>G</span><span>A</span><span>S</span><span>+</span></div><div><strong>Small practice. Real confidence.</strong><small>Made for your everyday conversations.</small></div></div>
+          </div>
+          <div className="marketing-hero-visual" aria-label="Illustration of the LinguaPro speaking practice experience">
+            <div className="marketing-orbit marketing-orbit-one" /><div className="marketing-orbit marketing-orbit-two" />
+            <div className="marketing-floating-note note-top"><span className="note-icon note-purple"><AudioLines size={17} /></span><span><strong>Speak naturally</strong><small>Practice out loud</small></span><span className="note-wave">〰</span></div>
+            <div className="marketing-practice-card">
+              <div className="practice-card-top"><span className="practice-live-dot" /> SPEAKING LAB <span className="practice-streak">✦ Daily practice</span></div>
+              <div className="practice-illustration"><div className="practice-sun" /><div className="practice-person"><div className="practice-hair" /><div className="practice-face"><span /><span /></div><div className="practice-body" /></div><div className="practice-speech-bubble">Hello! How can I help you?</div><div className="practice-star">✦</div></div>
+              <div className="practice-card-label">TODAY’S PHRASE</div><h3>“Could you please help me?”</h3><p>Say it with a clear, confident voice.</p>
+              <div className="practice-card-footer"><span className="practice-mic"><Mic size={18} /></span><span><strong>Your turn to speak</strong><small>Listen · Repeat · Improve</small></span><span className="practice-card-arrow"><ChevronRight size={18} /></span></div>
+            </div>
+            <div className="marketing-floating-note note-bottom"><span className="note-icon note-green"><Check size={17} /></span><span><strong>Great progress!</strong><small>+15 XP earned today</small></span><span className="note-confetti">✦</span></div>
+            <div className="marketing-hero-decoration deco-one">✦</div><div className="marketing-hero-decoration deco-two">✧</div>
+          </div>
+          <div className="marketing-hero-bottom"><span><ShieldCheck size={16} /> A learning path made for you</span><span><Languages size={16} /> Tamil-friendly explanations</span><span><AudioLines size={16} /> Speak, not just study</span></div>
+        </section>
+        <section className="marketing-audience-section" id="learning-paths">
+          <div className="marketing-section-intro"><span className="marketing-section-kicker">YOUR GOALS COME FIRST</span><h2>English that fits <span>your life.</span></h2><p>Choose your journey. We’ll help you take the next step at your own pace.</p></div>
+          <div className="marketing-audience-layout">
+            <div className="marketing-audience-options">{audiences.map((item) => <button key={item.label} className={"marketing-audience-option " + (audience === item.label ? "selected" : "")} onClick={() => setAudience(item.label)}><span className="audience-emoji">{item.icon}</span><span className="audience-option-copy"><strong>{item.label}</strong><small>{item.detail}</small></span><span className="audience-radio">{audience === item.label ? <Check size={14} /> : null}</span></button>)}</div>
+            <article className="marketing-audience-detail"><div className="audience-detail-orb">{audiences.find(item => item.label === audience)?.icon}</div><span className="marketing-section-kicker">YOUR PERSONAL LEARNING PATH</span><h3>{audience === "Job Professionals" ? "Speak up at work." : audience === "Kids" ? "Make English a joyful adventure." : audience === "Adults" ? "Feel ready for real conversations." : "Make everyday English easier."}</h3><p>{audienceCopy[audience]}</p><div className="audience-detail-tags"><span><Check size={13} /> Guided lessons</span><span><Check size={13} /> Speaking practice</span><span><Check size={13} /> Track your progress</span></div><button className="marketing-detail-cta" onClick={onRegister}>Explore this learning path <ChevronRight size={16} /></button></article>
+          </div>
+        </section>
+        <section className="marketing-how-section" id="how-it-works"><div className="marketing-section-intro"><span className="marketing-section-kicker">A BETTER WAY TO PRACTISE</span><h2>Learn it. Say it. <span>Own it.</span></h2><p>Build a real-world skill through a simple learning loop that keeps you moving forward.</p></div><div className="marketing-learning-steps"><article><span className="step-number">01</span><div className="step-emoji step-lavender"><BookOpen size={23} /></div><h3>Learn</h3><p>Discover practical words and phrases with clear explanations.</p></article><article><span className="step-number">02</span><div className="step-emoji step-peach"><Volume2 size={23} /></div><h3>Practice</h3><p>Listen to examples and check what you’ve understood.</p></article><article><span className="step-number">03</span><div className="step-emoji step-blue"><Mic size={23} /></div><h3>Speak</h3><p>Say the sentence aloud and grow comfortable using it.</p></article><article><span className="step-number">04</span><div className="step-emoji step-green"><Sparkles size={23} /></div><h3>Improve</h3><p>Review your learning, revisit mistakes and keep progressing.</p></article></div><div className="marketing-loop-note"><Sparkles size={17} /><span>Your next step is always clear — no guesswork, just steady progress.</span><button onClick={onRegister}>Try it free <ChevronRight size={15} /></button></div></section>
+        <section className="marketing-why-section" id="why-linguapro"><div className="marketing-why-copy"><span className="marketing-section-kicker">BUILT FOR REAL LIFE</span><h2>From “I understand”<br />to <span>“I can say it.”</span></h2><p>English becomes easier when you use it. LinguaPro brings learning, speaking and revision together in one supportive space.</p><button className="marketing-primary-cta" onClick={onRegister}>Find your voice <ChevronRight size={17} /></button></div><div className="marketing-benefit-grid"><article><span className="benefit-icon benefit-purple"><Languages size={20} /></span><h3>Explanations that make sense</h3><p>Understand new English with learner-friendly Tamil support.</p></article><article><span className="benefit-icon benefit-blue"><Mic size={20} /></span><h3>Speaking takes practice</h3><p>Use listen-and-repeat activities to practise complete phrases.</p></article><article><span className="benefit-icon benefit-green"><TrendingUp size={20} /></span><h3>See your progress</h3><p>Build a daily habit with learning tasks, streaks and XP.</p></article><article><span className="benefit-icon benefit-peach"><Target size={20} /></span><h3>Made around your goals</h3><p>Choose a learning path for daily life, school or work.</p></article></div></section>
+        <section className="marketing-final-cta"><div className="final-cta-sparkle">✦</div><span className="marketing-section-kicker">YOUR NEXT CONVERSATION STARTS HERE</span><h2>One small step today.<br /><span>A more confident you tomorrow.</span></h2><p>Start free and make English part of your everyday life.</p><button className="marketing-primary-cta" onClick={onRegister}>Create your free account <ChevronRight size={18} /></button><small>No payment required to get started.</small></section>
+      </main>
+      <footer className="marketing-footer"><button className="marketing-brand"><span className="marketing-brand-mark">◈</span> Lingua<span>Pro</span></button><span>Learn a language. Find your voice.</span><div><a href="#how-it-works">How it works</a><a href="#learning-paths">Learning paths</a><button onClick={onLogin}>Sign in</button></div><small>© {new Date().getFullYear()} LinguaPro</small></footer>
     </div>
   );
 }
