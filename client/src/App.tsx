@@ -1,15 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./styles-teacher-progress.css";
+import StudentLearningRoadmap from "./components/StudentLearningRoadmap";
+import "./components/student-roadmap.css";
 import {
   AudioLines, BookOpen, Check, ChevronRight, CircleUserRound, Crown,
   Flame, GraduationCap, Languages, LayoutDashboard, LockKeyhole, LogIn,
-  Menu, Mic, Settings, Sparkles, Star, Target, TrendingUp, Volume2, X, Users, ShieldCheck, ClipboardList, Send,
+  Menu, Mic, Settings, Sparkles, Star, Target, TrendingUp, Volume2, X, Users, ShieldCheck, ClipboardList, Send, CircleHelp,
 } from "lucide-react";
 import type { FormEvent, ReactNode } from "react";
 import type { LearningLevel, LearningPhrase, LearningTask, Page, UserProfile } from "./types";
 import TeacherCourseBuilder from "./components/TeacherCourseBuilder";
 import TeacherCourseProgress from "./components/TeacherCourseProgress";
-import StudentCourseLibrary from "./components/StudentCourseLibrary";
 
 const phrases: LearningPhrase[] = [
   { phrase: "Could you please help me?", meaning: "Ask someone for help politely.", example: "Could you please help me with this report?" },
@@ -33,11 +34,11 @@ const defaultProfile: UserProfile = {
 
 const navItems: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "courses", label: "My learning", icon: GraduationCap },
+  { id: "courses", label: "Learning map", icon: GraduationCap },
+  { id: "placement", label: "Level test", icon: CircleHelp },
   { id: "speaking", label: "Speaking", icon: AudioLines },
   { id: "vocabulary", label: "Vocabulary", icon: BookOpen },
   { id: "progress", label: "My progress", icon: TrendingUp },
-  { id: "assignments", label: "Assignments", icon: ClipboardList },
   { id: "profile", label: "Profile & settings", icon: Settings },
 ];
 
@@ -52,11 +53,10 @@ function readStored<T>(key: string, fallback: T): T {
 
 function pageFromPath(pathname: string): Page {
   const path = pathname.replace(/\/+$/, "") || "/";
-  if (path === "/owner" || (path.startsWith("/admin/") && path !== "/admin/signin")) return "owner";
-  if (path === "/admin/signin") return "owner";
-  if (path === "/teacher") return "teacher";
+  if (path === "/owner" || path === "/teacher" || path.startsWith("/admin/")) return "dashboard";
+  if (path === "/placement-test") return "placement";
   if (path === "/student" || path === "/" || path === "/dashboard" || path === "/onboarding") return "dashboard";
-  if (path === "/features" || path === "/courses" || path.startsWith("/courses/")) return "courses";
+  if (path === "/features" || path === "/courses" || path.startsWith("/courses/") || path === "/learning-map") return "courses";
   if (path === "/pricing") return "plans";
   if (path === "/login" || path === "/register") return "dashboard";
   if (path === "/practice" || path === "/study-play") return "vocabulary";
@@ -65,7 +65,7 @@ function pageFromPath(pathname: string): Page {
   if (path === "/settings") return "profile";
   if (path === "/lessons" || path.startsWith("/lessons/")) return "speaking";
   if (path === "/privacy" || path === "/terms") return "profile";
-  const allowed: Page[] = ["dashboard", "courses", "speaking", "vocabulary", "progress", "profile", "plans", "assignments"];
+  const allowed: Page[] = ["dashboard", "courses", "speaking", "vocabulary", "progress", "profile", "plans", "placement"];
   const candidate = path.slice(1) as Page;
   return allowed.includes(candidate) ? candidate : "dashboard";
 }
@@ -92,7 +92,6 @@ function App() {
     } catch { return defaultTasks; }
   });
   const [phraseIndex, setPhraseIndex] = useState(0);
-  const [learningLevel, setLearningLevel] = useState<"all" | LearningLevel>("all");
   const [vocabAnswers, setVocabAnswers] = useState<Record<string, string>>(() => {
     try { return JSON.parse(localStorage.getItem("linguapro-vocab-answers") || "{}") as Record<string, string>; } catch { return {}; }
   });
@@ -114,11 +113,20 @@ function App() {
   useEffect(() => { localStorage.setItem("linguapro-vocab-completed", JSON.stringify(vocabCompleted)); }, [vocabCompleted]);
   const [isListening, setIsListening] = useState(false);
   const [sessionComplete, setSessionComplete] = useState(false);
+  const speakingStartedAtRef = useRef<number | null>(null);
+  const [speakingSecondsToday, setSpeakingSecondsToday] = useState(0);
+  const [speakingHistory, setSpeakingHistory] = useState<Array<{ activityDate: string; speakingSeconds: number; sessionsCompleted?: number }>>([]);
   const [message, setMessage] = useState("");
   const [spokenTranscript, setSpokenTranscript] = useState("");
   const [coachCorrect, setCoachCorrect] = useState<boolean | null>(null);
   const [coachAttempts, setCoachAttempts] = useState(0);
-  const [authMode, setAuthMode] = useState<"login" | "register" | null>(() => window.location.pathname === "/register" ? "register" : (window.location.pathname === "/login" || window.location.pathname === "/student/signin" || window.location.pathname === "/admin/signin" || window.location.pathname.startsWith("/admin/") || window.location.pathname === "/owner") ? "login" : null);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState<0 | 1 | 2>(0);
+  const [onboardingAudience, setOnboardingAudience] = useState<"Kids" | "Adults" | "Job Professionals" | "Homemakers">("Job Professionals");
+  const [onboardingGoal, setOnboardingGoal] = useState<"Daily conversations" | "Career growth" | "Confidence" | "School and family">("Career growth");
+  const [onboardingMinutes, setOnboardingMinutes] = useState<10 | 15 | 20 | 30 | 60>(20);
+  const [onboardingBusy, setOnboardingBusy] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "register" | null>(() => window.location.pathname === "/register" ? "register" : (window.location.pathname === "/login" || window.location.pathname === "/student/signin") ? "login" : null);
   const [authName, setAuthName] = useState("");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
@@ -135,9 +143,8 @@ function App() {
     if (authToken) headers.set("Authorization", "Bearer " + authToken);
     return fetch(url, { ...init, headers, credentials: "include" });
   }
-  const ownerEmail = (import.meta.env.VITE_OWNER_EMAIL as string | undefined)?.trim().toLowerCase() ?? "";
-  const isOwner = authenticated && (profile.role === "owner" || (!!ownerEmail && profile.email.trim().toLowerCase() === ownerEmail));
-  const isTeacher = authenticated && profile.role === "teacher" && !isOwner;
+  const isOwner: boolean = false;
+  const isTeacher: boolean = false;
   const [ownerSection, setOwnerSection] = useState(() => ownerSectionFromPath(window.location.pathname));
   const [ownerStats, setOwnerStats] = useState<{ totalUsers: number; totalTeachers: number; totalCourses: number; premiumUsers: number; freeUsers: number; activeLearners: number; totalXp: number } | null>(null);
   const [ownerUsers, setOwnerUsers] = useState<Array<{ _id: string; name: string; email: string; role?: string; plan: string; targetLanguage: string; level: string; totalXp: number; currentStreak: number; createdAt: string }>>([]);
@@ -222,17 +229,19 @@ function App() {
     try {
       const response = await apiFetch(apiBase + "/progress", { credentials: "include" });
       if (!response.ok) return;
-      const payload = await response.json() as { data?: { totalXp?: number; currentStreak?: number; completedToday?: Array<{ taskId: string }> } };
+      const payload = await response.json() as { data?: { totalXp?: number; currentStreak?: number; completedToday?: Array<{ taskId: string }>; speakingSecondsToday?: number; speakingHistory?: Array<{ activityDate: string; speakingSeconds: number; sessionsCompleted?: number }> } };
       if (payload.data) {
         setServerXp(Number(payload.data.totalXp ?? 0));
         setServerStreak(Number(payload.data.currentStreak ?? 0));
         setServerCompletedIds((payload.data.completedToday ?? []).map((item) => item.taskId));
+        setSpeakingSecondsToday(Number(payload.data.speakingSecondsToday ?? 0));
+        setSpeakingHistory(payload.data.speakingHistory ?? []);
       }
     } catch { /* Keep the local demo usable if the API is temporarily unavailable. */ }
   }
 
   useEffect(() => {
-    const onPopState = () => { setPage(pageFromPath(window.location.pathname)); if (window.location.pathname.startsWith("/admin/")) setOwnerSection(ownerSectionFromPath(window.location.pathname)); if (window.location.pathname === "/login") setAuthMode("login"); if (window.location.pathname === "/register") setAuthMode("register"); };
+    const onPopState = () => { setPage(pageFromPath(window.location.pathname)); if (window.location.pathname === "/login") setAuthMode("login"); if (window.location.pathname === "/register") setAuthMode("register"); };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
@@ -246,13 +255,11 @@ function App() {
         const user = payload.data?.user;
         if (user) {
           setAuthenticated(true);
-          setProfile((current) => ({ ...current, ...user, role: user.role ?? "student" }));
+          setProfile((current) => ({ ...current, ...user, role: "student" }));
           const requestedRolePath = window.location.pathname;
-          if (["/owner", "/teacher", "/student"].includes(requestedRolePath) || requestedRolePath.startsWith("/admin/") || requestedRolePath === "/student/signin") {
-            const destination = user.role === "owner" ? "/owner" : user.role === "teacher" ? "/teacher" : "/student";
-            const destinationPage: Page = user.role === "owner" ? "owner" : user.role === "teacher" ? "teacher" : "dashboard";
-            if (requestedRolePath !== destination) window.history.replaceState({}, "", destination);
-            setPage(destinationPage);
+          if (["/owner", "/teacher", "/student", "/student/signin"].includes(requestedRolePath) || requestedRolePath.startsWith("/admin/")) {
+            window.history.replaceState({}, "", "/dashboard");
+            setPage("dashboard");
           }
           await loadServerProgress();
         }
@@ -262,14 +269,24 @@ function App() {
   const completed = tasks.filter((task) => task.completed || serverCompletedIds.includes(task.id)).length;
   const xp = serverXp ?? tasks.filter((task) => task.completed).reduce((sum, task) => sum + task.xp, 0);
   const phrase = phrases[phraseIndex];
+  const speakingDayKey = (daysAgo: number) => new Date(Date.now() - daysAgo * 86_400_000).toISOString().slice(0, 10);
+  const speakingSecondsLast7Days = speakingHistory.filter((item) => item.activityDate >= speakingDayKey(6)).reduce((sum, item) => sum + item.speakingSeconds, 0);
+  const speakingSecondsPrevious7Days = speakingHistory.filter((item) => item.activityDate >= speakingDayKey(13) && item.activityDate < speakingDayKey(6)).reduce((sum, item) => sum + item.speakingSeconds, 0);
+  const speakingSecondsLast30Days = speakingHistory.filter((item) => item.activityDate >= speakingDayKey(29)).reduce((sum, item) => sum + item.speakingSeconds, 0);
+  const speakingSecondsPrevious30Days = speakingHistory.filter((item) => item.activityDate >= speakingDayKey(59) && item.activityDate < speakingDayKey(29)).reduce((sum, item) => sum + item.speakingSeconds, 0);
 
   function navigate(next: Page) {
-    const path = next === "owner" ? "/admin/overview" : next === "teacher" ? "/teacher" : next === "dashboard" ? "/dashboard" : next === "plans" ? "/pricing" : next === "profile" ? "/settings" : next === "vocabulary" ? "/practice" : "/" + next;
+    const path = next === "owner" || next === "teacher" ? "/dashboard" : next === "placement" ? "/placement-test" : next === "courses" ? "/learning-map" : next === "dashboard" ? "/dashboard" : next === "plans" ? "/pricing" : next === "profile" ? "/settings" : next === "vocabulary" ? "/practice" : "/" + next;
     if (window.location.pathname !== path) window.history.pushState({}, "", path);
     setPage(next);
     setMenuOpen(false);
     setMessage("");
-    if (next === "speaking") { setSpokenTranscript(""); setCoachCorrect(null); setCoachAttempts(0); }
+    if (next === "speaking") {
+      setSpokenTranscript(""); setCoachCorrect(null); setCoachAttempts(0);
+      setPhraseIndex(0); setSessionComplete(false); speakingStartedAtRef.current = null;
+    } else if (page === "speaking") {
+      speakingStartedAtRef.current = null;
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -277,6 +294,20 @@ function App() {
     const next = { ...profile, [key]: value };
     setProfile(next);
     localStorage.setItem("linguapro-profile", JSON.stringify(next));
+  }
+
+  async function savePlacementLevel(level: LearningLevel) {
+    setProfile((current) => {
+      const next = { ...current, level, role: "student" as const };
+      localStorage.setItem("linguapro-profile", JSON.stringify(next));
+      return next;
+    });
+    if (authenticated && apiBase) {
+      try {
+        const response = await apiFetch(apiBase + "/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ level }) });
+        if (!response.ok) setMessage("Your level is saved on this device. Account sync will retry when available.");
+      } catch { setMessage("Your level is saved on this device. Account sync will retry when available."); }
+    }
   }
 
   async function completeTask(id: string) {
@@ -321,13 +352,42 @@ function App() {
     setMessage("Listen carefully, then repeat the phrase aloud.");
   }
 
+  async function saveSpeakingSession() {
+    const startedAt = speakingStartedAtRef.current;
+    const durationSeconds = startedAt === null ? 1 : Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+    speakingStartedAtRef.current = null;
+    setSpeakingSecondsToday((seconds) => seconds + durationSeconds);
+    if (!authenticated || !apiBase) return;
+    try {
+      const response = await apiFetch(apiBase + "/progress/speaking-session", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ durationSeconds, phrasesCompleted: phrases.length, attempts: Math.max(1, coachAttempts + 1) }),
+      });
+      const payload = await response.json() as { message?: string; data?: { speakingSecondsToday?: number } };
+      if (!response.ok) throw new Error(payload.message ?? "Speaking time could not be saved.");
+      if (payload.data) {
+        const savedSeconds = Number(payload.data.speakingSecondsToday ?? 0);
+        setSpeakingSecondsToday(savedSeconds);
+        const activityDate = new Date().toISOString().slice(0, 10);
+        setSpeakingHistory((history) => history.some((item) => item.activityDate === activityDate)
+          ? history.map((item) => item.activityDate === activityDate ? { ...item, speakingSeconds: savedSeconds } : item)
+          : [{ activityDate, speakingSeconds: savedSeconds, sessionsCompleted: 1 }, ...history].slice(0, 60));
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Speaking time could not be saved.");
+    }
+  }
+
   function recordSpeech() {
+    if (speakingStartedAtRef.current === null) speakingStartedAtRef.current = Date.now();
     if (isListening || sessionComplete) return;
     type RecognitionResult = { results: ArrayLike<ArrayLike<{ transcript: string }>> };
     type RecognitionError = { error?: string };
     type Recognition = {
       lang: string;
       interimResults?: boolean;
+      maxAlternatives?: number;
       onresult: ((event: RecognitionResult) => void) | null;
       onerror: ((event: RecognitionError) => void) | null;
       start: () => void;
@@ -344,6 +404,7 @@ function App() {
     const recognition = new RecognitionAPI();
     recognition.lang = profile.targetLanguage === "Hindi" ? "hi-IN" : profile.targetLanguage === "Malayalam" ? "ml-IN" : profile.targetLanguage === "Kannada" ? "kn-IN" : profile.targetLanguage === "Telugu" ? "te-IN" : "en-IN";
     recognition.interimResults = false;
+    recognition.maxAlternatives = 3;
     let handledResult = false;
 
     const speakFeedback = (text: string, onFinished: () => void) => {
@@ -370,8 +431,15 @@ function App() {
       if (handledResult) return;
       handledResult = true;
       setIsListening(false);
-      const spoken = (event.results[0]?.[0]?.transcript ?? "").trim();
       const normalize = (value: string) => value.toLocaleLowerCase().replace(/[^\p{L}\p{N}\s]/gu, " ").replace(/\s+/g, " ").trim();
+      const candidates = Array.from(event.results[0] ?? []).map((candidate) => candidate.transcript.trim()).filter(Boolean);
+      const expectedForScoring = normalize(phrase.phrase).split(" ").filter(Boolean);
+      const candidateScore = (candidate: string) => {
+        const candidateWords = normalize(candidate).split(" ").filter(Boolean);
+        const matchedWords = expectedForScoring.filter((word) => candidateWords.includes(word)).length;
+        return expectedForScoring.length ? matchedWords / expectedForScoring.length + (normalize(candidate) === normalize(phrase.phrase) ? 1 : 0) : 0;
+      };
+      const spoken = candidates.sort((left, right) => candidateScore(right) - candidateScore(left))[0] ?? "";
       const expectedWords = normalize(phrase.phrase).split(" ").filter(Boolean);
       const spokenWords = normalize(spoken).split(" ").filter(Boolean);
       const missingWords = expectedWords.filter((word) => !spokenWords.includes(word));
@@ -396,7 +464,8 @@ function App() {
           setMessage("Next phrase. Listen and speak when you are ready.");
         } else {
           setSessionComplete(true);
-          setMessage("All 5 phrases completed! Saving your speaking XP…");
+          setMessage("All 5 phrases completed! Saving your speaking time and XP…");
+          void saveSpeakingSession();
           void completeTask("speak");
         }
       };
@@ -455,6 +524,7 @@ function App() {
 
   async function submitAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const wasRegistering = authMode === "register";
     setBusy(true);
     setMessage("");
     try {
@@ -475,17 +545,27 @@ function App() {
       const payload = await response.json() as { message?: string; token?: string; data?: { user?: { name?: string; email?: string; role?: "student" | "teacher" | "owner" } } };
       if (!response.ok) throw new Error(payload.message ?? "Unable to sign in.");
       if (payload.token) { sessionStorage.setItem("linguapro-token", payload.token); setAuthToken(payload.token); }
-      if (payload.data?.user?.name) saveProfile("name", payload.data.user.name);
-      if (payload.data?.user?.email) saveProfile("email", payload.data.user.email);
-      if (payload.data?.user?.role) saveProfile("role", payload.data.user.role);
+      const signedInUser = payload.data?.user;
+      if (signedInUser) {
+        setProfile((current) => {
+          const next = { ...current, ...signedInUser, role: signedInUser.role ?? "student" };
+          localStorage.setItem("linguapro-profile", JSON.stringify(next));
+          return next;
+        });
+      }
       setAuthenticated(true);
-      const signedInRole = payload.data?.user?.role ?? "student";
       setAuthMode(null);
-      if (signedInRole === "owner") { const section = window.location.pathname.startsWith("/admin/") && window.location.pathname !== "/admin/signin" ? ownerSectionFromPath(window.location.pathname) : "overview"; setOwnerSection(section); if (!window.location.pathname.startsWith("/admin/") || window.location.pathname === "/admin/signin") window.history.replaceState({}, "", "/admin/overview"); setPage("owner"); }
-      else if (signedInRole === "teacher") { window.history.replaceState({}, "", "/teacher"); setPage("teacher"); }
-      else { window.history.replaceState({}, "", "/dashboard"); setPage("dashboard"); }
+      setProfile((current) => {
+        const next = { ...current, ...(signedInUser ?? {}), role: "student" as const };
+        localStorage.setItem("linguapro-profile", JSON.stringify(next));
+        return next;
+      });
+      window.history.replaceState({}, "", "/dashboard");
+      setPage("dashboard");
+      if (wasRegistering) { setOnboardingStep(0); setOnboardingOpen(true); }
+      else if (!localStorage.getItem("linguapro-placement-level")) { setPage("placement"); window.history.replaceState({}, "", "/placement-test"); }
       await loadServerProgress();
-      setMessage("You are signed in.");
+      setMessage(wasRegistering ? "" : "You are signed in.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to sign in.");
     } finally {
@@ -493,13 +573,54 @@ function App() {
     }
   }
 
-  return (
+
+  async function saveOnboarding() {
+    setOnboardingBusy(true);
+    setMessage("");
+    const payload = {
+      audience: onboardingAudience,
+      learningGoal: onboardingGoal,
+      dailyGoalMinutes: onboardingMinutes,
+      onboardingCompleted: true,
+      nativeLanguage: "Tamil",
+      targetLanguage: "English",
+    };
+    try {
+      const response = await apiFetch(apiBase + "/profile", {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json() as { message?: string; data?: { user?: Partial<UserProfile> } };
+      if (!response.ok) throw new Error(result.message ?? "We could not save your learning preferences. Please try again.");
+      setProfile((current) => {
+        const next = { ...current, ...payload };
+        localStorage.setItem("linguapro-profile", JSON.stringify(next));
+        return next;
+      });
+      setOnboardingOpen(false);
+      setMessage("");
+      setPage("placement");
+      window.history.replaceState({}, "", "/placement-test");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Could not save your preferences.");
+    } finally {
+      setOnboardingBusy(false);
+    }
+  }
+
+  const showLanding = page === "dashboard" && !authenticated && !authMode;
+
+  return showLanding
+    ? <MarketingLanding onLogin={() => setAuthMode("login")} onRegister={() => setAuthMode("register")} />
+    : (
     <div className="app-shell">
       <header className="topbar">
         <button className="icon-button mobile-menu-button" aria-label="Open menu" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X /> : <Menu />}</button>
         <button className="brand" onClick={() => navigate("dashboard")}><span className="brand-mark">◈</span> Lingua<span className="brand-accent">Pro</span></button>
         <div className="topbar-right">
-          {isOwner && <button className="plan-chip owner-chip" onClick={() => { setOwnerSection("overview"); void loadOwnerData("overview"); navigate("owner" as Page); }}><ShieldCheck size={14} /> OWNER</button>}{isTeacher && <button className="plan-chip owner-chip" onClick={() => navigate("teacher" as Page)}><GraduationCap size={14} /> TEACHER</button>}<button className="plan-chip" onClick={() => navigate("plans")}><Sparkles size={14} /> {profile.plan.toUpperCase()} PLAN</button>
+          <button className="plan-chip" onClick={() => navigate("placement")}><CircleHelp size={14} /> LEVEL TEST</button>
           <button className="avatar-button" onClick={() => navigate("profile")} aria-label="Profile"><CircleUserRound size={20} /></button>
           <button className="text-button" onClick={() => { setAuthMode("login"); setMessage(""); }}><LogIn size={16} /> Sign in</button>
         </div>
@@ -507,25 +628,10 @@ function App() {
 
       <div className="app-layout">
         <aside className={"sidebar " + (menuOpen ? "sidebar-open" : "")}>
-          <div className="sidebar-caption">{isOwner ? "OWNER CONSOLE" : isTeacher ? "TEACHER WORKSPACE" : "YOUR WORKSPACE"}</div>
-          <nav className="sidebar-nav">
-            {isOwner ? [
-              { id: "overview", label: "Dashboard", icon: LayoutDashboard }, { id: "students", label: "Students", icon: GraduationCap },
-              { id: "teachers", label: "Teachers", icon: ShieldCheck }, { id: "admins", label: "Admins", icon: LockKeyhole },
-              { id: "users", label: "All users", icon: Users }, { id: "courses", label: "Courses", icon: BookOpen },
-              { id: "lessons", label: "Lessons", icon: ClipboardList }, { id: "assessments", label: "Assessments", icon: Check },
-              { id: "assignments", label: "Assignments", icon: Send }, { id: "certificates", label: "Certificates", icon: Star },
-              { id: "pricing", label: "Plans & pricing", icon: Crown }, { id: "subscriptions", label: "Subscriptions", icon: Star },
-              { id: "payments", label: "Payments", icon: TrendingUp }, { id: "invoices", label: "Invoices", icon: ClipboardList },
-              { id: "coupons", label: "Coupons & offers", icon: Sparkles }, { id: "categories", label: "Categories", icon: LayoutDashboard },
-              { id: "materials", label: "Learning materials", icon: BookOpen }, { id: "announcements", label: "Announcements", icon: Send },
-              { id: "settings", label: "Site settings", icon: Settings }, { id: "emails", label: "Email templates", icon: LogIn },
-              { id: "reports", label: "Reports & analytics", icon: TrendingUp },
-            ].map(({ id, label, icon: Icon }) => <button key={id} className={"nav-item " + (ownerSection === id ? "active" : "")} onClick={() => { setOwnerSection(id); const route = id === "overview" ? "/admin/overview" : id === "admins" ? "/admin/users" : id === "pricing" ? "/admin/subscriptions" : id === "reports" ? "/admin/analytics" : id === "assessments" ? "/admin/questions" : "/admin/" + id; window.history.pushState({}, "", route); if (["overview", "users", "students", "teachers"].includes(id)) void loadOwnerData(id as "overview" | "users" | "students" | "teachers"); }}><Icon size={17} /><span>{label}</span></button>)
-            : navItems.map(({ id, label, icon: Icon }) => <button key={id} className={"nav-item " + (page === id ? "active" : "")} onClick={() => navigate(id)}><Icon size={18} /><span>{label}</span>{id === "dashboard" && <span className="nav-dot" />}</button>)}
-          </nav>
-          {!isOwner && <div className="sidebar-premium"><div className="premium-icon"><Crown size={20} /></div><strong>Unlock your potential</strong><p>Get more lessons and guided practice with Premium.</p><button className="button button-light" onClick={() => navigate("plans")}>Explore plans <ChevronRight size={15} /></button></div>}
-          <div className="sidebar-foot">LinguaPro · {isOwner ? "Platform administration" : "Learn every day"}</div>
+          <div className="sidebar-caption">YOUR LEARNING JOURNEY</div>
+          <nav className="sidebar-nav">{navItems.map(({ id, label, icon: Icon }) => <button key={id} className={"nav-item " + (page === id ? "active" : "")} onClick={() => navigate(id)}><Icon size={18} /><span>{label}</span>{id === "dashboard" && <span className="nav-dot" />}</button>)}</nav>
+          <div className="sidebar-premium"><div className="premium-icon"><Crown size={20} /></div><strong>Your next level awaits</strong><p>Take a level test and follow your personal English learning route.</p><button className="button button-light" onClick={() => navigate("placement")}>Take level test <ChevronRight size={15} /></button></div>
+          <div className="sidebar-foot">LinguaPro · Learn every day</div>
         </aside>
 
         <main className="page-content">
@@ -606,7 +712,7 @@ function App() {
               <div className="date-chip">{new Date().toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</div>
             </div>
             <section className="hero-card">
-              <div className="hero-copy"><div className="hero-eyebrow"><Sparkles size={14} /> YOUR NEXT STEP</div><h2>Build confidence, one conversation at a time.</h2><p>Practise useful phrases, learn new words, and speak a little more every day.</p><button className="button button-white" onClick={() => navigate("speaking")}>Start speaking practice <ChevronRight size={17} /></button></div>
+              <div className="hero-copy"><div className="hero-eyebrow"><Sparkles size={14} /> YOUR NEXT STEP</div><h2>Build confidence, one conversation at a time.</h2><p>Practise useful phrases, learn new words, and speak a little more every day.</p><div className="hero-actions-row"><button className="button button-white" onClick={() => navigate("placement")}>Take my level test <ChevronRight size={17} /></button><button className="button button-white hero-secondary-action" onClick={() => navigate("courses")}>Open learning map <BookOpen size={16} /></button></div></div>
               <div className="hero-illustration"><div className="bubble bubble-one">Hello!</div><div className="bubble bubble-two">வணக்கம்</div><div className="hero-circle"><Languages size={55} /></div><Sparkles className="hero-sparkle" size={25} /></div>
             </section>
             <section className="stats-grid">
@@ -648,15 +754,29 @@ function App() {
             </section>)}
             {!studentAssignments.length && !assignmentMessage && <section className="surface-card"><h3>No assignments yet</h3><p>Assignments from your teacher will appear here.</p></section>}
           </>}
-          {page === "courses" && <>
-            <PageTitle eyebrow="YOUR LEARNING PATH" title="My learning" subtitle="A clear path from first words to confident conversations." />
-            <section className="student-learning-hero">
-              <div className="student-learning-hero-copy"><span className="course-builder-eyebrow">YOUR ENGLISH JOURNEY</span><h2>Small steps. <span>Confident English.</span></h2><p>Learn a lesson, practise what you learn, speak out loud, and review your progress. Your course progress and XP are saved to your account.</p><div className="student-learning-method"><span>01 Learn</span><i>→</i><span>02 Practise</span><i>→</i><span>03 Speak</span><i>→</i><span>04 Feedback</span><i>→</i><span>05 Revise</span><i>→</i><span>06 Apply</span></div></div>
-              <div className="student-learning-hero-art" aria-hidden="true"><div className="learning-book-orb"><BookOpen size={42}/></div><span className="learning-float learning-float-one">Aa</span><span className="learning-float learning-float-two"><Languages size={20}/></span><span className="learning-float learning-float-three"><Star size={18}/></span></div>
-            </section>
-            <div className="student-learning-levels"><button type="button" className={"student-level-button " + (learningLevel === "Basic" ? "selected" : "")} onClick={() => setLearningLevel(learningLevel === "Basic" ? "all" : "Basic")}><span>🌱</span><div><strong>Basic</strong><small>Build your foundations</small></div><small>Choose level ↗</small></button><button type="button" className={"student-level-button " + (learningLevel === "Intermediate" ? "selected" : "")} onClick={() => setLearningLevel(learningLevel === "Intermediate" ? "all" : "Intermediate")}><span>🚀</span><div><strong>Intermediate</strong><small>Use English with confidence</small></div><small>Choose level ↗</small></button><button type="button" className={"student-level-button " + (learningLevel === "Advanced" ? "selected" : "")} onClick={() => setLearningLevel(learningLevel === "Advanced" ? "all" : "Advanced")}><span>🎓</span><div><strong>Advanced</strong><small>Communicate fluently</small></div><small>Choose level ↗</small></button></div>
-            <StudentCourseLibrary apiBase={apiBase} authToken={authToken} initialLevel={learningLevel} />
-          </>}
+          {page === "placement" && <StudentLearningRoadmap
+            mode="test"
+            initialLevel={profile.level}
+            apiBase={apiBase}
+            authToken={authToken}
+            authenticated={authenticated}
+            onLevelDetermined={(level) => { void savePlacementLevel(level); }}
+            onOpenRoadmap={() => navigate("courses")}
+            onOpenTest={() => navigate("placement")}
+            onStartSpeaking={(phrase) => { if (phrase) setSpokenTranscript(phrase); navigate("speaking"); }}
+          />}
+
+          {page === "courses" && <StudentLearningRoadmap
+            mode="roadmap"
+            initialLevel={profile.level}
+            apiBase={apiBase}
+            authToken={authToken}
+            authenticated={authenticated}
+            onLevelDetermined={(level) => { void savePlacementLevel(level); }}
+            onOpenRoadmap={() => navigate("courses")}
+            onOpenTest={() => navigate("placement")}
+            onStartSpeaking={(phrase) => { if (phrase) setSpokenTranscript(phrase); navigate("speaking"); }}
+          />}
 
           {page === "speaking" && <>
             <PageTitle eyebrow="LINGUAPRO AI COACH" title="Speak with confidence" subtitle="A personal English coach for everyday life, workplace conversations, and career growth." />
@@ -672,7 +792,7 @@ function App() {
               {message && <div className="coach-feedback"><Sparkles size={17}/><div><strong>Coach feedback</strong><p>{message}</p></div></div>}
               <p className="notice">Voice recognition depends on browser support and microphone permission. AI feedback is used when the backend AI provider is configured. Voice recordings are not stored by this app.</p>
               {sessionComplete && <div className="inline-message"><strong>Practice complete!</strong> You finished all {phrases.length} phrases. {authenticated?"Your speaking task XP is being saved to your account.":"Sign in to save XP to your account."}<div className="practice-controls"><button className="button button-primary" onClick={()=>{setPhraseIndex(0);setSessionComplete(false);setSpokenTranscript("");setCoachCorrect(null);setCoachAttempts(0);setMessage("New practice started. Listen to the first phrase.");}}>Practise again</button></div></div>}
-              <div className="coach-footer-stats"><span><strong>{coachAttempts}</strong> speaking attempts</span><span><strong>{phraseIndex}</strong> phrases cleared</span><span><strong>{Math.max(0,phrases.length-phraseIndex)}</strong> to go</span></div>
+              <div className="coach-footer-stats"><span><strong>{coachAttempts}</strong> speaking attempts</span><span><strong>{phraseIndex}</strong> phrases cleared</span><span><strong>{Math.max(0,phrases.length-phraseIndex)}</strong> to go</span><span><strong>{Math.floor(speakingSecondsToday/60)}m {speakingSecondsToday%60}s</strong> spoken today</span></div>
             </section><aside className="coach-side-panel"><div className="coach-side-icon"><GraduationCap size={23}/></div><h3>Your speaking goals</h3><p>Small, repeatable steps help you speak more naturally over time.</p><div className="coach-goal-row"><span className="coach-goal-check"><Check size={14}/></span><div><strong>Listen carefully</strong><small>Notice sentence rhythm</small></div></div><div className="coach-goal-row"><span className="coach-goal-check"><Check size={14}/></span><div><strong>Speak out loud</strong><small>Practise the whole sentence</small></div></div><div className="coach-goal-row"><span className="coach-goal-check"><Check size={14}/></span><div><strong>Learn from feedback</strong><small>Try again when needed</small></div></div><div className="coach-side-tip"><Sparkles size={16}/><span>Tip: Speak at a comfortable pace. Clear words matter more than speed.</span></div></aside></div>
           </>}
 
@@ -738,13 +858,14 @@ function App() {
 
 {page === "progress" && <>
             <PageTitle eyebrow="YOUR ACHIEVEMENTS" title="My progress" subtitle="Celebrate the small wins that build lasting skills." />
-            <div className="stats-grid"><StatCard icon={<Flame />} label="Practice streak" value={(serverStreak || (completed ? 1 : 0)) + (serverStreak === 1 || (!serverStreak && completed) ? " day" : " days")} detail="Days practised in a row" /><StatCard icon={<Star />} label="Total XP" value={String(xp)} detail="Points earned" /><StatCard icon={<Check />} label="Tasks completed" value={String(completed)} detail="In this demo session" /></div>
+            <div className="stats-grid"><StatCard icon={<Flame />} label="Practice streak" value={(serverStreak || (completed ? 1 : 0)) + (serverStreak === 1 || (!serverStreak && completed) ? " day" : " days")} detail="Days practised in a row" /><StatCard icon={<Star />} label="Total XP" value={String(xp)} detail="Points earned" /><StatCard icon={<Check />} label="Tasks completed" value={String(completed)} detail="In this demo session" /><StatCard icon={<Mic />} label="Speaking today" value={Math.floor(speakingSecondsToday / 60) + "m " + (speakingSecondsToday % 60) + "s"} detail="Time spent speaking" /></div>
+            <section className="surface-card progress-detail"><h3>Speaking activity</h3><p className="muted-small">Your saved speaking practice time</p><div className="activity-row"><span className="activity-check complete"><Mic size={14} /></span><div className="activity-copy"><strong>Today</strong><span>Speaking practice</span></div><b>{Math.floor(speakingSecondsToday / 60)}m {speakingSecondsToday % 60}s</b></div><div className="activity-row"><span className="activity-check complete"><TrendingUp size={14} /></span><div className="activity-copy"><strong>Last 7 days</strong><span>Weekly speaking total</span></div><b>{Math.floor(speakingSecondsLast7Days / 60)}m</b></div><div className="activity-row"><span className="activity-check"><TrendingUp size={14} /></span><div className="activity-copy"><strong>Previous 7 days</strong><span>{speakingSecondsPrevious7Days === 0 ? "No earlier activity recorded" : (speakingSecondsLast7Days >= speakingSecondsPrevious7Days ? "Up " : "Down ") + Math.round(Math.abs(speakingSecondsLast7Days - speakingSecondsPrevious7Days) / speakingSecondsPrevious7Days * 100) + "% compared with the previous week"}</span><b>{Math.floor(speakingSecondsPrevious7Days / 60)}m</b></div></div><div className="activity-row"><span className="activity-check"><TrendingUp size={14} /></span><div className="activity-copy"><strong>Last 30 days</strong><span>Monthly speaking total</span></div><b>{Math.floor(speakingSecondsLast30Days / 60)}m</b></div><div className="activity-row"><span className="activity-check"><TrendingUp size={14} /></span><div className="activity-copy"><strong>Previous 30 days</strong><span>{speakingSecondsPrevious30Days === 0 ? "No earlier monthly activity recorded" : (speakingSecondsLast30Days >= speakingSecondsPrevious30Days ? "Up " : "Down ") + Math.round(Math.abs(speakingSecondsLast30Days - speakingSecondsPrevious30Days) / speakingSecondsPrevious30Days * 100) + "% compared with the previous month"}</span></div><b>{Math.floor(speakingSecondsPrevious30Days / 60)}m</b></div></section>
             <section className="surface-card progress-detail"><h3>Daily activity</h3><p className="muted-small">Today's learning plan</p>{tasks.map((task) => <div className="activity-row" key={task.id}><span className={"activity-check " + (task.completed ? "complete" : "")}>{task.completed ? <Check size={15} /> : <Target size={13} />}</span><div className="activity-copy"><strong>{task.title}</strong><span>{task.duration}</span></div><b>{task.completed ? "+" + task.xp + " XP" : "Not started"}</b></div>)}</section>
           </>}
 
           {page === "profile" && <>
             <PageTitle eyebrow="MAKE IT YOURS" title="Profile & settings" subtitle="Personalise your learning experience." />
-            <section className="surface-card settings-card"><div className="profile-header"><div className="profile-avatar"><CircleUserRound size={35} /></div><div><h3>{profile.name || "Learner"}</h3><p>{profile.email || "Your email will appear here after sign in."}</p><span className="tag">{profile.plan.toUpperCase()} PLAN</span></div></div><div className="form-grid"><label>Display name<input value={profile.name} onChange={(event) => saveProfile("name", event.target.value)} /></label><label>Native language<select value={profile.nativeLanguage} onChange={(event) => saveProfile("nativeLanguage", event.target.value)}>{["Tamil", "English", "Malayalam", "Hindi", "Kannada", "Telugu"].map((language) => <option key={language}>{language}</option>)}</select></label><label>Learning language<select value={profile.targetLanguage} onChange={(event) => saveProfile("targetLanguage", event.target.value)}>{["English", "Malayalam", "Hindi", "Kannada", "Telugu", "Tamil"].map((language) => <option key={language}>{language}</option>)}</select></label><label>Learning level<select value={profile.level} onChange={(event) => saveProfile("level", event.target.value as LearningLevel)}>{["Basic", "Intermediate", "Advanced"].map((level) => <option key={level}>{level}</option>)}</select></label></div><p className="notice">{authenticated ? "Your account is connected. Profile preferences are currently stored on this device." : "Sign in to connect your account and sync learning progress."}</p><button className="button button-primary" onClick={() => setMessage("Your preferences are saved on this device.")}>Save preferences <Check size={16} /></button>{message && <div className="inline-message">{message}</div>}</section>
+            <section className="surface-card settings-card"><div className="profile-header"><div className="profile-avatar"><CircleUserRound size={35} /></div><div><h3>{profile.name || "Learner"}</h3><p>{profile.email || "Your email will appear here after sign in."}</p><span className="tag">{profile.plan.toUpperCase()} PLAN</span></div></div><div className="form-grid"><label>Display name<input value={profile.name} onChange={(event) => saveProfile("name", event.target.value)} /></label><label>Native language<select value={profile.nativeLanguage} onChange={(event) => saveProfile("nativeLanguage", event.target.value)}>{["Tamil", "English", "Malayalam", "Hindi", "Kannada", "Telugu"].map((language) => <option key={language}>{language}</option>)}</select></label><label>Learning language<input value="English" readOnly /></label><label>Learning level<input value={profile.level + (localStorage.getItem("linguapro-placement-score") ? " · Placement test" : " · Take placement test")} readOnly /></label></div><div className="profile-learning-path"><div><h3>Your learning path</h3><p>{profile.audience ? profile.audience + " · " + (profile.learningGoal ?? "Personalised English practice") : "Choose a path that fits your goals."}</p><small>{profile.dailyGoalMinutes ?? 20} minutes of practice each day</small></div><button className="button button-outline" onClick={() => { setOnboardingAudience(profile.audience ?? "Job Professionals"); setOnboardingGoal(profile.learningGoal ?? "Career growth"); setOnboardingMinutes(profile.dailyGoalMinutes ?? 20); setOnboardingStep(0); setMessage(""); setOnboardingOpen(true); }}>Personalise path <ChevronRight size={15} /></button></div><p className="notice">{authenticated ? "Your learning path preferences sync to your account. Other profile edits are currently stored on this device." : "Sign in to connect your account and sync learning progress."}</p><button className="button button-primary" onClick={() => setMessage("Your device profile preferences are saved.")}>Save preferences <Check size={16} /></button>{message && <div className="inline-message">{message}</div>}</section>
           </>}
 
           {page === "plans" && <>
@@ -757,7 +878,97 @@ function App() {
         </main>
       </div>
 
+
+      {onboardingOpen && authenticated && !isOwner && !isTeacher && <div className="modal-backdrop onboarding-backdrop"><section className="onboarding-modal" role="dialog" aria-modal="true" aria-labelledby="onboarding-title">
+        <div className="onboarding-topline"><span className="onboarding-brand-mark">◈</span><span>YOUR PERSONAL LEARNING PATH</span><span className="onboarding-step-count">STEP {onboardingStep + 1} OF 3</span></div>
+        <div className="onboarding-progress"><span style={{ width: ((onboardingStep + 1) / 3 * 100) + "%" }} /></div>
+        {onboardingStep === 0 && <>
+          <span className="marketing-section-kicker">LET’S MAKE THIS PERSONAL</span><h2 id="onboarding-title">Who are you learning for?</h2><p className="onboarding-description">We’ll shape your English practice around your everyday life.</p>
+          <div className="onboarding-choice-grid">
+            {([{value:"Kids",icon:"🎈",title:"Kids",desc:"Fun learning for ages 5–12"},{value:"Adults",icon:"☀️",title:"Adults",desc:"Everyday English confidence"},{value:"Job Professionals",icon:"💼",title:"Job professionals",desc:"Career and workplace English"},{value:"Homemakers",icon:"🌷",title:"Homemakers",desc:"Family and daily conversations"}] as const).map((item) => <button type="button" key={item.value} className={"onboarding-choice " + (onboardingAudience === item.value ? "selected" : "")} onClick={() => setOnboardingAudience(item.value)}><span className="onboarding-choice-icon">{item.icon}</span><span><strong>{item.title}</strong><small>{item.desc}</small></span><span className="onboarding-choice-check">{onboardingAudience === item.value ? <Check size={14} /> : null}</span></button>)}
+          </div>
+        </>}
+        {onboardingStep === 1 && <>
+          <span className="marketing-section-kicker">WHAT MATTERS MOST TO YOU?</span><h2 id="onboarding-title">What’s your main goal?</h2><p className="onboarding-description">Choose the result you want to work towards first.</p>
+          <div className="onboarding-goal-list">
+            {([{value:"Career growth",icon:"🚀",title:"Career growth",desc:"Interviews, meetings and workplace communication"},{value:"Daily conversations",icon:"💬",title:"Daily conversations",desc:"Speak comfortably in real-life situations"},{value:"Confidence",icon:"✨",title:"Build my confidence",desc:"Speak without overthinking every word"},{value:"School and family",icon:"🏡",title:"School and family",desc:"School, shopping, phone calls and healthcare"}] as const).map((item) => <button type="button" key={item.value} className={"onboarding-goal-choice " + (onboardingGoal === item.value ? "selected" : "")} onClick={() => setOnboardingGoal(item.value)}><span>{item.icon}</span><span><strong>{item.title}</strong><small>{item.desc}</small></span><span className="onboarding-choice-check">{onboardingGoal === item.value ? <Check size={14} /> : null}</span></button>)}
+          </div>
+        </>}
+        {onboardingStep === 2 && <>
+          <span className="marketing-section-kicker">A HABIT THAT FITS YOUR DAY</span><h2 id="onboarding-title">How much time can you practise?</h2><p className="onboarding-description">A little practice every day adds up. You can change this later.</p>
+          <div className="onboarding-time-options">{([10,15,20,30,60] as const).map((minutes) => <button type="button" key={minutes} className={"onboarding-time-choice " + (onboardingMinutes === minutes ? "selected" : "")} onClick={() => setOnboardingMinutes(minutes)}><strong>{minutes}</strong><span>min / day</span>{minutes === 20 && <small>RECOMMENDED</small>}</button>)}</div>
+          <div className="onboarding-summary"><span className="onboarding-summary-icon"><Sparkles size={19} /></span><span><strong>Your starting plan</strong><small>{onboardingAudience} · {onboardingGoal} · {onboardingMinutes} minutes daily</small></span></div>
+          <p className="onboarding-tamil-note"><Languages size={15} /> Tamil explanations and English speaking practice are ready for you.</p>
+        </>}
+        {message && <div className="inline-message">{message}</div>}
+        <div className="onboarding-actions">{onboardingStep > 0 && <button className="button button-outline" type="button" disabled={onboardingBusy} onClick={() => setOnboardingStep((step) => (step - 1) as 0 | 1 | 2)}>Back</button>}{onboardingStep < 2 ? <button className="button button-primary" type="button" onClick={() => setOnboardingStep((step) => (step + 1) as 0 | 1 | 2)}>Continue <ChevronRight size={16} /></button> : <button className="button button-primary" type="button" disabled={onboardingBusy} onClick={() => void saveOnboarding()}>{onboardingBusy ? "Saving your path…" : "Start learning"} <ChevronRight size={16} /></button>}</div>
+        <button className="onboarding-skip" type="button" disabled={onboardingBusy} onClick={() => { setOnboardingOpen(false); setMessage("You can personalise your learning path later in Profile & settings."); }}>Skip for now</button>
+      </section></div>}
+
       {authMode && <div className="modal-backdrop" onClick={() => setAuthMode(null)}><section className="auth-modal" onClick={(event) => event.stopPropagation()}><button className="modal-close icon-button" onClick={() => setAuthMode(null)} aria-label="Close"><X /></button><div className="auth-logo">◈</div><div className="eyebrow">WELCOME TO LINGUAPRO</div><h2>{authMode === "register" ? "Create your account" : "Welcome back"}</h2><p className="muted-small">Your next conversation starts here.</p><form onSubmit={submitAuth}>{authMode === "register" && <label>Full name<input required minLength={2} value={authName} onChange={(event) => setAuthName(event.target.value)} placeholder="Your name" /></label>}<label>Email address<input required type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} placeholder="you@example.com" /></label><label>Password<input required minLength={8} type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} placeholder="At least 8 characters" /></label><button className="button button-primary full-width" disabled={busy}>{busy ? "Please wait…" : authMode === "register" ? "Create account" : "Sign in"} <ChevronRight size={16} /></button></form>{message && <div className="inline-message">{message}</div>}<p className="auth-switch">{authMode === "register" ? "Already have an account?" : "New to LinguaPro?"} <button className="inline-link" onClick={() => { setAuthMode(authMode === "register" ? "login" : "register"); setMessage(""); }}>{authMode === "register" ? "Sign in" : "Create account"}</button></p><p className="notice"><LockKeyhole size={13} /> Account access works after backend deployment.</p></section></div>}
+    </div>
+  );
+}
+
+
+type MarketingLandingProps = { onLogin: () => void; onRegister: () => void };
+
+function MarketingLanding({ onLogin, onRegister }: MarketingLandingProps) {
+  const [audience, setAudience] = useState("Job Professionals");
+  const audiences = [
+    { label: "Kids", detail: "Fun, bite-sized English", icon: "🎈" },
+    { label: "Adults", detail: "Everyday confidence", icon: "☀️" },
+    { label: "Job Professionals", detail: "Career-ready speaking", icon: "💼" },
+    { label: "Homemakers", detail: "English for daily life", icon: "🌷" },
+  ];
+  const audienceCopy: Record<string, string> = {
+    Kids: "Play, listen and speak through short, joyful lessons.",
+    Adults: "Build everyday English with practical phrases and guided practice.",
+    "Job Professionals": "Practise interviews, meetings and confident workplace conversations.",
+    Homemakers: "Learn useful English for shopping, phone calls, school and healthcare.",
+  };
+  return (
+    <div className="marketing-page">
+      <header className="marketing-nav">
+        <button className="marketing-brand" aria-label="LinguaPro home"><span className="marketing-brand-mark">◈</span> Lingua<span>Pro</span></button>
+        <nav aria-label="Main navigation"><a href="#how-it-works">How it works</a><a href="#learning-paths">Learning paths</a><a href="#why-linguapro">Why LinguaPro</a></nav>
+        <div className="marketing-nav-actions"><button className="marketing-signin" onClick={onLogin}>Sign in</button><button className="marketing-nav-cta" onClick={onRegister}>Start for free <ChevronRight size={16} /></button></div>
+      </header>
+      <main>
+        <section className="marketing-hero">
+          <div className="marketing-hero-copy">
+            <div className="marketing-kicker"><span className="marketing-kicker-dot" /> YOUR ENGLISH. YOUR NEXT CHAPTER.</div>
+            <h1>Don’t just learn English.<br /><span>Live it with confidence.</span></h1>
+            <p className="marketing-hero-description">A personal English practice space that helps you learn useful words, speak out loud, get feedback and make progress — one day at a time.</p>
+            <div className="marketing-hero-actions"><button className="marketing-primary-cta" onClick={onRegister}>Start your free journey <ChevronRight size={18} /></button><button className="marketing-secondary-cta" onClick={() => document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })}><span className="marketing-play">▶</span> See how it works</button></div>
+            <div className="marketing-social-proof"><div className="marketing-avatars"><span>G</span><span>A</span><span>S</span><span>+</span></div><div><strong>Small practice. Real confidence.</strong><small>Made for your everyday conversations.</small></div></div>
+          </div>
+          <div className="marketing-hero-visual" aria-label="Illustration of the LinguaPro speaking practice experience">
+            <div className="marketing-orbit marketing-orbit-one" /><div className="marketing-orbit marketing-orbit-two" />
+            <div className="marketing-floating-note note-top"><span className="note-icon note-purple"><AudioLines size={17} /></span><span><strong>Speak naturally</strong><small>Practice out loud</small></span><span className="note-wave">〰</span></div>
+            <div className="marketing-practice-card">
+              <div className="practice-card-top"><span className="practice-live-dot" /> SPEAKING LAB <span className="practice-streak">✦ Daily practice</span></div>
+              <div className="practice-illustration"><div className="practice-sun" /><div className="practice-person"><div className="practice-hair" /><div className="practice-face"><span /><span /></div><div className="practice-body" /></div><div className="practice-speech-bubble">Hello! How can I help you?</div><div className="practice-star">✦</div></div>
+              <div className="practice-card-label">TODAY’S PHRASE</div><h3>“Could you please help me?”</h3><p>Say it with a clear, confident voice.</p>
+              <div className="practice-card-footer"><span className="practice-mic"><Mic size={18} /></span><span><strong>Your turn to speak</strong><small>Listen · Repeat · Improve</small></span><span className="practice-card-arrow"><ChevronRight size={18} /></span></div>
+            </div>
+            <div className="marketing-floating-note note-bottom"><span className="note-icon note-green"><Check size={17} /></span><span><strong>Great progress!</strong><small>+15 XP earned today</small></span><span className="note-confetti">✦</span></div>
+            <div className="marketing-hero-decoration deco-one">✦</div><div className="marketing-hero-decoration deco-two">✧</div>
+          </div>
+          <div className="marketing-hero-bottom"><span><ShieldCheck size={16} /> A learning path made for you</span><span><Languages size={16} /> Tamil-friendly explanations</span><span><AudioLines size={16} /> Speak, not just study</span></div>
+        </section>
+        <section className="marketing-audience-section" id="learning-paths">
+          <div className="marketing-section-intro"><span className="marketing-section-kicker">YOUR GOALS COME FIRST</span><h2>English that fits <span>your life.</span></h2><p>Choose your journey. We’ll help you take the next step at your own pace.</p></div>
+          <div className="marketing-audience-layout">
+            <div className="marketing-audience-options">{audiences.map((item) => <button key={item.label} className={"marketing-audience-option " + (audience === item.label ? "selected" : "")} onClick={() => setAudience(item.label)}><span className="audience-emoji">{item.icon}</span><span className="audience-option-copy"><strong>{item.label}</strong><small>{item.detail}</small></span><span className="audience-radio">{audience === item.label ? <Check size={14} /> : null}</span></button>)}</div>
+            <article className="marketing-audience-detail"><div className="audience-detail-orb">{audiences.find(item => item.label === audience)?.icon}</div><span className="marketing-section-kicker">YOUR PERSONAL LEARNING PATH</span><h3>{audience === "Job Professionals" ? "Speak up at work." : audience === "Kids" ? "Make English a joyful adventure." : audience === "Adults" ? "Feel ready for real conversations." : "Make everyday English easier."}</h3><p>{audienceCopy[audience]}</p><div className="audience-detail-tags"><span><Check size={13} /> Guided lessons</span><span><Check size={13} /> Speaking practice</span><span><Check size={13} /> Track your progress</span></div><button className="marketing-detail-cta" onClick={onRegister}>Explore this learning path <ChevronRight size={16} /></button></article>
+          </div>
+        </section>
+        <section className="marketing-how-section" id="how-it-works"><div className="marketing-section-intro"><span className="marketing-section-kicker">A BETTER WAY TO PRACTISE</span><h2>Learn it. Say it. <span>Own it.</span></h2><p>Build a real-world skill through a simple learning loop that keeps you moving forward.</p></div><div className="marketing-learning-steps"><article><span className="step-number">01</span><div className="step-emoji step-lavender"><BookOpen size={23} /></div><h3>Learn</h3><p>Discover practical words and phrases with clear explanations.</p></article><article><span className="step-number">02</span><div className="step-emoji step-peach"><Volume2 size={23} /></div><h3>Practice</h3><p>Listen to examples and check what you’ve understood.</p></article><article><span className="step-number">03</span><div className="step-emoji step-blue"><Mic size={23} /></div><h3>Speak</h3><p>Say the sentence aloud and grow comfortable using it.</p></article><article><span className="step-number">04</span><div className="step-emoji step-green"><Sparkles size={23} /></div><h3>Improve</h3><p>Review your learning, revisit mistakes and keep progressing.</p></article></div><div className="marketing-loop-note"><Sparkles size={17} /><span>Your next step is always clear — no guesswork, just steady progress.</span><button onClick={onRegister}>Try it free <ChevronRight size={15} /></button></div></section>
+        <section className="marketing-why-section" id="why-linguapro"><div className="marketing-why-copy"><span className="marketing-section-kicker">BUILT FOR REAL LIFE</span><h2>From “I understand”<br />to <span>“I can say it.”</span></h2><p>English becomes easier when you use it. LinguaPro brings learning, speaking and revision together in one supportive space.</p><button className="marketing-primary-cta" onClick={onRegister}>Find your voice <ChevronRight size={17} /></button></div><div className="marketing-benefit-grid"><article><span className="benefit-icon benefit-purple"><Languages size={20} /></span><h3>Explanations that make sense</h3><p>Understand new English with learner-friendly Tamil support.</p></article><article><span className="benefit-icon benefit-blue"><Mic size={20} /></span><h3>Speaking takes practice</h3><p>Use listen-and-repeat activities to practise complete phrases.</p></article><article><span className="benefit-icon benefit-green"><TrendingUp size={20} /></span><h3>See your progress</h3><p>Build a daily habit with learning tasks, streaks and XP.</p></article><article><span className="benefit-icon benefit-peach"><Target size={20} /></span><h3>Made around your goals</h3><p>Choose a learning path for daily life, school or work.</p></article></div></section>
+        <section className="marketing-final-cta"><div className="final-cta-sparkle">✦</div><span className="marketing-section-kicker">YOUR NEXT CONVERSATION STARTS HERE</span><h2>One small step today.<br /><span>A more confident you tomorrow.</span></h2><p>Start free and make English part of your everyday life.</p><button className="marketing-primary-cta" onClick={onRegister}>Create your free account <ChevronRight size={18} /></button><small>No payment required to get started.</small></section>
+      </main>
+      <footer className="marketing-footer"><button className="marketing-brand"><span className="marketing-brand-mark">◈</span> Lingua<span>Pro</span></button><span>Learn a language. Find your voice.</span><div><a href="#how-it-works">How it works</a><a href="#learning-paths">Learning paths</a><button onClick={onLogin}>Sign in</button></div><small>© {new Date().getFullYear()} LinguaPro</small></footer>
     </div>
   );
 }

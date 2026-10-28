@@ -8,6 +8,10 @@ const profileSchema = z.object({
   nativeLanguage: z.enum(["Tamil", "English", "Malayalam", "Hindi", "Kannada", "Telugu"]).optional(),
   targetLanguage: z.enum(["Tamil", "English", "Malayalam", "Hindi", "Kannada", "Telugu"]).optional(),
   level: z.enum(["Basic", "Intermediate", "Advanced"]).optional(),
+  audience: z.enum(["Kids", "Adults", "Job Professionals", "Homemakers"]).optional(),
+  learningGoal: z.enum(["Daily conversations", "Career growth", "Confidence", "School and family"]).optional(),
+  dailyGoalMinutes: z.union([z.literal(10), z.literal(15), z.literal(20), z.literal(30), z.literal(60)]).optional(),
+  onboardingCompleted: z.boolean().optional(),
 });
 
 export async function getProfile(

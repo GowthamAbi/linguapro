@@ -13,6 +13,10 @@ export interface UserFields {
   currentStreak: number;
   lastActiveDate: string;
   dailyXpGoal: number;
+  audience?: "Kids" | "Adults" | "Job Professionals" | "Homemakers";
+  learningGoal?: "Daily conversations" | "Career growth" | "Confidence" | "School and family";
+  dailyGoalMinutes?: number;
+  onboardingCompleted: boolean;
 }
 
 const userSchema = new Schema<UserFields>(
@@ -29,6 +33,10 @@ const userSchema = new Schema<UserFields>(
     currentStreak: { type: Number, default: 0, min: 0 },
     lastActiveDate: { type: String, default: "" },
     dailyXpGoal: { type: Number, default: 20, enum: [10, 20, 30, 50] },
+    audience: { type: String, enum: ["Kids", "Adults", "Job Professionals", "Homemakers"] },
+    learningGoal: { type: String, enum: ["Daily conversations", "Career growth", "Confidence", "School and family"] },
+    dailyGoalMinutes: { type: Number, default: 20, enum: [10, 15, 20, 30, 60] },
+    onboardingCompleted: { type: Boolean, default: false },
   },
   {
     timestamps: true,

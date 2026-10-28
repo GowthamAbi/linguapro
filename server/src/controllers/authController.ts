@@ -68,35 +68,16 @@ export async function login(request: Request, response: Response): Promise<void>
   }
 
   const email = parsed.data.email.toLowerCase();
-  const ownerEmail = process.env.OWNER_EMAIL?.trim().toLowerCase();
-  const ownerPassword = process.env.OWNER_PASSWORD;
-  const ownerLogin = Boolean(
-    ownerEmail &&
-    ownerPassword &&
-    email === ownerEmail &&
-    parsed.data.password === ownerPassword
-  );
-
   let user = await User.findOne({ email }).select("+passwordHash");
 
-  if (ownerLogin) {
-    const passwordHash = await bcrypt.hash(ownerPassword as string, 12);
-    if (!user) {
-      user = await User.create({ name: "LinguaPro Owner", email, passwordHash });
-    } else if (!(await bcrypt.compare(ownerPassword as string, String(user.passwordHash)))) {
-      user.passwordHash = passwordHash;
-      await user.save();
-    }
-  }
-
-  if (!user || (!ownerLogin && !(await bcrypt.compare(parsed.data.password, String(user.passwordHash)))) ) {
+  if (!user || !(await bcrypt.compare(parsed.data.password, String(user.passwordHash))) ) {
     response.status(401).json({ message: "Email or password is incorrect." });
     return;
   }
 
   const token = createSessionToken(user.id);
   setSessionCookie(response, token);
-  response.json({ message: ownerLogin ? "Owner signed in successfully." : "Signed in successfully.", token, data: { user: { ...user.toJSON(), role: ownerLogin ? "owner" : user.role } } });
+  response.json({ message: "Signed in successfully.", token, data: { user: { ...user.toJSON(), role: "student" } } });
 }
 
 export function logout(_request: Request, response: Response): void {
@@ -121,6 +102,5 @@ export async function currentUser(
     return;
   }
 
-  const isOwner = user.email.trim().toLowerCase() === process.env.OWNER_EMAIL?.trim().toLowerCase();
-  response.json({ data: { user: { ...user.toJSON(), role: isOwner ? "owner" : user.role } } });
+  response.json({ data: { user: { ...user.toJSON(), role: "student" } } });
 }

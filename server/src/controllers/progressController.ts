@@ -4,6 +4,7 @@ import type { AuthenticatedRequest } from "../middleware/authenticate";
 import { LearningProgress } from "../models/LearningProgress";
 import { User } from "../models/User";
 import { XpEvent } from "../models/XpEvent";
+import { SpeakingActivity } from "../models/SpeakingActivity";
 
 const taskRewards: Record<string, number> = { words: 10, speak: 15, listen: 10, review: 5 };
 const taskSchema = z.object({ taskId: z.enum(["words", "speak", "listen", "review"]) });
@@ -14,8 +15,12 @@ export async function getProgress(
   response: Response,
 ): Promise<void> {
   const today = todayDate();
-  const history = await LearningProgress.find({ userId: request.userId }).sort({ createdAt: -1 }).limit(100);
-  const user = await User.findById(request.userId).select("totalXp currentStreak lastActiveDate");
+  const [history, user, speakingToday, speakingHistory] = await Promise.all([
+    LearningProgress.find({ userId: request.userId }).sort({ createdAt: -1 }).limit(100),
+    User.findById(request.userId).select("totalXp currentStreak lastActiveDate"),
+    SpeakingActivity.findOne({ userId: request.userId, activityDate: today }),
+    SpeakingActivity.find({ userId: request.userId }).sort({ activityDate: -1 }).limit(60),
+  ]);
 
   response.json({
     data: {
@@ -23,6 +28,8 @@ export async function getProgress(
       currentStreak: user?.currentStreak ?? 0,
       today,
       completedToday: history.filter((item) => item.completedOn === today),
+      speakingSecondsToday: speakingToday?.speakingSeconds ?? 0,
+      speakingHistory,
       history,
     },
   });
@@ -80,4 +87,46 @@ export async function completeTask(
 
     throw error;
   }
+}
+
+const speakingSessionSchema = z.object({
+  durationSeconds: z.number().int().min(1).max(3600),
+  phrasesCompleted: z.number().int().min(1).max(50),
+  attempts: z.number().int().min(1).max(200),
+});
+
+export async function recordSpeakingActivity(
+  request: AuthenticatedRequest,
+  response: Response,
+): Promise<void> {
+  const parsed = speakingSessionSchema.safeParse(request.body);
+  if (!parsed.success) {
+    response.status(400).json({ message: "Provide a valid completed speaking session." });
+    return;
+  }
+
+  const today = todayDate();
+  const activity = await SpeakingActivity.findOneAndUpdate(
+    { userId: request.userId, activityDate: today },
+    {
+      $inc: {
+        speakingSeconds: parsed.data.durationSeconds,
+        sessionsCompleted: 1,
+        phrasesCompleted: parsed.data.phrasesCompleted,
+        attempts: parsed.data.attempts,
+      },
+      $setOnInsert: { userId: request.userId, activityDate: today },
+    },
+    { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true },
+  );
+
+  response.status(201).json({
+    message: "Speaking practice time saved.",
+    data: {
+      speakingSecondsToday: activity?.speakingSeconds ?? 0,
+      sessionsCompleted: activity?.sessionsCompleted ?? 0,
+      phrasesCompleted: activity?.phrasesCompleted ?? 0,
+      attempts: activity?.attempts ?? 0,
+    },
+  });
 }

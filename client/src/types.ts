@@ -1,4 +1,4 @@
-export type Page = "dashboard" | "courses" | "speaking" | "vocabulary" | "progress" | "profile" | "plans" | "owner" | "teacher" | "assignments";
+export type Page = "dashboard" | "courses" | "speaking" | "vocabulary" | "progress" | "profile" | "plans" | "owner" | "teacher" | "assignments" | "placement";
 export type LearningLevel = "Basic" | "Intermediate" | "Advanced";
 
 export interface UserProfile {
@@ -9,6 +9,10 @@ export interface UserProfile {
   level: LearningLevel;
   plan: "Free" | "Premium";
   role: "student" | "teacher" | "owner";
+  audience?: "Kids" | "Adults" | "Job Professionals" | "Homemakers";
+  learningGoal?: "Daily conversations" | "Career growth" | "Confidence" | "School and family";
+  dailyGoalMinutes?: 10 | 15 | 20 | 30 | 60;
+  onboardingCompleted?: boolean;
 }
 
 export interface LearningTask {
