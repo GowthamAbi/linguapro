@@ -9,6 +9,10 @@ export interface UserProfile {
   level: LearningLevel;
   plan: "Free" | "Premium";
   role: "student" | "teacher" | "owner";
+  audience?: "Kids" | "Adults" | "Job Professionals" | "Homemakers";
+  learningGoal?: "Daily conversations" | "Career growth" | "Confidence" | "School and family";
+  dailyGoalMinutes?: 10 | 15 | 20 | 30 | 60;
+  onboardingCompleted?: boolean;
 }
 
 export interface LearningTask {
