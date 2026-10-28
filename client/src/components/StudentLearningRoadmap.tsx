@@ -1,10 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Check, ChevronRight, CircleHelp, LockKeyhole, Mic, RotateCcw, Volume2 } from "lucide-react";
 import type { LearningLevel } from "../types";
 
 type Props = {
   mode: "test" | "roadmap";
   initialLevel: LearningLevel;
+  apiBase: string;
+  authToken: string;
+  authenticated: boolean;
   onLevelDetermined: (level: LearningLevel) => void;
   onOpenRoadmap: () => void;
   onOpenTest: () => void;
@@ -311,7 +314,7 @@ function readPlacementLevel(): LearningLevel | null {
   return value === "Basic" || value === "Intermediate" || value === "Advanced" ? value : null;
 }
 
-export default function StudentLearningRoadmap({ mode, initialLevel, onLevelDetermined, onOpenRoadmap, onOpenTest, onStartSpeaking }: Props) {
+export default function StudentLearningRoadmap({ mode, initialLevel, apiBase, authToken, authenticated, onLevelDetermined, onOpenRoadmap, onOpenTest, onStartSpeaking }: Props) {
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [testSubmitted, setTestSubmitted] = useState(false);
   const [testLevel, setTestLevel] = useState<LearningLevel | null>(readPlacementLevel);
@@ -327,6 +330,45 @@ export default function StudentLearningRoadmap({ mode, initialLevel, onLevelDete
   const placementScore = placementQuestions.filter((question, index) => answers[index] === question.answer).length;
   const placementLevel: LearningLevel = placementScore <= 5 ? "Basic" : placementScore <= 10 ? "Intermediate" : "Advanced";
   const currentLevel = testLevel ?? initialLevel;
+  useEffect(() => {
+    if (!authenticated || !apiBase) return;
+    const headers = new Headers();
+    if (authToken) headers.set("Authorization", "Bearer " + authToken);
+    fetch(apiBase + "/learning-path", { credentials: "include", headers })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const payload = await response.json() as { data?: { placementLevel?: LearningLevel; placementScore?: number; completedLessonIds?: string[] } | null };
+        if (!payload.data) return;
+        if (payload.data.placementLevel) {
+          setTestLevel(payload.data.placementLevel);
+          localStorage.setItem("linguapro-placement-level", payload.data.placementLevel);
+        }
+        if (typeof payload.data.placementScore === "number") localStorage.setItem("linguapro-placement-score", String(payload.data.placementScore));
+        if (payload.data.completedLessonIds) {
+          setCompleted((current) => {
+            const merged = [...new Set([...current, ...payload.data!.completedLessonIds!])];
+            localStorage.setItem("linguapro-roadmap-completed", JSON.stringify(merged));
+            return merged;
+          });
+        }
+      })
+      .catch(() => undefined);
+  }, [authenticated, apiBase, authToken]);
+
+  async function persistLearningState(patch: { placementLevel?: LearningLevel; placementScore?: number; completedLessonIds?: string[] }) {
+    if (patch.placementLevel) localStorage.setItem("linguapro-placement-level", patch.placementLevel);
+    if (patch.placementScore !== undefined) localStorage.setItem("linguapro-placement-score", String(patch.placementScore));
+    if (patch.completedLessonIds) localStorage.setItem("linguapro-roadmap-completed", JSON.stringify(patch.completedLessonIds));
+    if (!authenticated || !apiBase) return;
+    const headers = new Headers({ "Content-Type": "application/json" });
+    if (authToken) headers.set("Authorization", "Bearer " + authToken);
+    try {
+      await fetch(apiBase + "/learning-path", { method: "PATCH", credentials: "include", headers, body: JSON.stringify(patch) });
+    } catch {
+      // Local progress remains available when the API is offline.
+    }
+  }
+
   const activeLesson = lessons.find((lesson) => lesson.id === activeLessonId) ?? null;
   const startIndex = Math.max(0, levelOrder.indexOf(currentLevel));
   const visibleLessons = lessons.filter((lesson) => levelOrder.indexOf(lesson.level) >= startIndex);
@@ -344,8 +386,7 @@ export default function StudentLearningRoadmap({ mode, initialLevel, onLevelDete
     const level = placementLevel;
     setTestLevel(level);
     setTestSubmitted(true);
-    localStorage.setItem("linguapro-placement-level", level);
-    localStorage.setItem("linguapro-placement-score", String(placementScore));
+    void persistLearningState({ placementLevel: level, placementScore });
     onLevelDetermined(level);
   }
 
@@ -354,6 +395,7 @@ export default function StudentLearningRoadmap({ mode, initialLevel, onLevelDete
     const next = completed.includes(activeLesson.id) ? completed : [...completed, activeLesson.id];
     setCompleted(next);
     localStorage.setItem("linguapro-roadmap-completed", JSON.stringify(next));
+    void persistLearningState({ completedLessonIds: next });
     setActiveLessonId(null);
     setBlankAnswers({});
     setBlankChecked({});
