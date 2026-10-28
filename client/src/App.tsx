@@ -757,6 +757,9 @@ function App() {
           {page === "placement" && <StudentLearningRoadmap
             mode="test"
             initialLevel={profile.level}
+            apiBase={apiBase}
+            authToken={authToken}
+            authenticated={authenticated}
             onLevelDetermined={(level) => { void savePlacementLevel(level); }}
             onOpenRoadmap={() => navigate("courses")}
             onOpenTest={() => navigate("placement")}
@@ -766,6 +769,9 @@ function App() {
           {page === "courses" && <StudentLearningRoadmap
             mode="roadmap"
             initialLevel={profile.level}
+            apiBase={apiBase}
+            authToken={authToken}
+            authenticated={authenticated}
             onLevelDetermined={(level) => { void savePlacementLevel(level); }}
             onOpenRoadmap={() => navigate("courses")}
             onOpenTest={() => navigate("placement")}
