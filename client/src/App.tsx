@@ -273,9 +273,10 @@ function App() {
   const completed = tasks.filter((task) => task.completed || serverCompletedIds.includes(task.id)).length;
   const xp = serverXp ?? tasks.filter((task) => task.completed).reduce((sum, task) => sum + task.xp, 0);
   const phrase = phrases[phraseIndex];
-  const speakingSecondsLast7Days = speakingHistory.filter((item) => item.activityDate >= new Date(Date.now() - 6 * 86_400_000).toISOString().slice(0, 10)).reduce((sum, item) => sum + item.speakingSeconds, 0);
-  const speakingSecondsPrevious7Days = speakingHistory.filter((item) => { const date = new Date(item.activityDate + "T00:00:00Z").getTime(); return date >= Date.now() - 13 * 86_400_000 && date < Date.now() - 6 * 86_400_000; }).reduce((sum, item) => sum + item.speakingSeconds, 0);
-  const speakingSecondsLast30Days = speakingHistory.filter((item) => item.activityDate >= new Date(Date.now() - 29 * 86_400_000).toISOString().slice(0, 10)).reduce((sum, item) => sum + item.speakingSeconds, 0);
+  const speakingDayKey = (daysAgo: number) => new Date(Date.now() - daysAgo * 86_400_000).toISOString().slice(0, 10);
+  const speakingSecondsLast7Days = speakingHistory.filter((item) => item.activityDate >= speakingDayKey(6)).reduce((sum, item) => sum + item.speakingSeconds, 0);
+  const speakingSecondsPrevious7Days = speakingHistory.filter((item) => item.activityDate >= speakingDayKey(13) && item.activityDate < speakingDayKey(6)).reduce((sum, item) => sum + item.speakingSeconds, 0);
+  const speakingSecondsLast30Days = speakingHistory.filter((item) => item.activityDate >= speakingDayKey(29)).reduce((sum, item) => sum + item.speakingSeconds, 0);
 
   function navigate(next: Page) {
     const path = next === "owner" ? "/admin/overview" : next === "teacher" ? "/teacher" : next === "dashboard" ? "/dashboard" : next === "plans" ? "/pricing" : next === "profile" ? "/settings" : next === "vocabulary" ? "/practice" : "/" + next;
