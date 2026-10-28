@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./styles-teacher-progress.css";
 import {
   AudioLines, BookOpen, Check, ChevronRight, CircleUserRound, Crown,
@@ -114,6 +114,8 @@ function App() {
   useEffect(() => { localStorage.setItem("linguapro-vocab-completed", JSON.stringify(vocabCompleted)); }, [vocabCompleted]);
   const [isListening, setIsListening] = useState(false);
   const [sessionComplete, setSessionComplete] = useState(false);
+  const speakingStartedAtRef = useRef<number | null>(null);
+  const [speakingSecondsToday, setSpeakingSecondsToday] = useState(0);
   const [message, setMessage] = useState("");
   const [spokenTranscript, setSpokenTranscript] = useState("");
   const [coachCorrect, setCoachCorrect] = useState<boolean | null>(null);
@@ -228,11 +230,12 @@ function App() {
     try {
       const response = await apiFetch(apiBase + "/progress", { credentials: "include" });
       if (!response.ok) return;
-      const payload = await response.json() as { data?: { totalXp?: number; currentStreak?: number; completedToday?: Array<{ taskId: string }> } };
+      const payload = await response.json() as { data?: { totalXp?: number; currentStreak?: number; completedToday?: Array<{ taskId: string }>; speakingSecondsToday?: number } };
       if (payload.data) {
         setServerXp(Number(payload.data.totalXp ?? 0));
         setServerStreak(Number(payload.data.currentStreak ?? 0));
         setServerCompletedIds((payload.data.completedToday ?? []).map((item) => item.taskId));
+        setSpeakingSecondsToday(Number(payload.data.speakingSecondsToday ?? 0));
       }
     } catch { /* Keep the local demo usable if the API is temporarily unavailable. */ }
   }
@@ -316,6 +319,7 @@ function App() {
   }
 
   function playPhrase() {
+    if (speakingStartedAtRef.current === null) speakingStartedAtRef.current = Date.now();
     if (!("speechSynthesis" in window)) {
       setMessage("Speech playback is not supported by this browser.");
       return;
@@ -327,7 +331,28 @@ function App() {
     setMessage("Listen carefully, then repeat the phrase aloud.");
   }
 
+  async function saveSpeakingSession() {
+    const startedAt = speakingStartedAtRef.current;
+    const durationSeconds = startedAt === null ? 1 : Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+    speakingStartedAtRef.current = null;
+    setSpeakingSecondsToday((seconds) => seconds + durationSeconds);
+    if (!authenticated || !apiBase) return;
+    try {
+      const response = await apiFetch(apiBase + "/progress/speaking-session", {
+        method: "POST", credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ durationSeconds, phrasesCompleted: phrases.length, attempts: Math.max(1, coachAttempts + 1) }),
+      });
+      const payload = await response.json() as { message?: string; data?: { speakingSecondsToday?: number } };
+      if (!response.ok) throw new Error(payload.message ?? "Speaking time could not be saved.");
+      if (payload.data) setSpeakingSecondsToday(Number(payload.data.speakingSecondsToday ?? 0));
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Speaking time could not be saved.");
+    }
+  }
+
   function recordSpeech() {
+    if (speakingStartedAtRef.current === null) speakingStartedAtRef.current = Date.now();
     if (isListening || sessionComplete) return;
     type RecognitionResult = { results: ArrayLike<ArrayLike<{ transcript: string }>> };
     type RecognitionError = { error?: string };
@@ -402,7 +427,8 @@ function App() {
           setMessage("Next phrase. Listen and speak when you are ready.");
         } else {
           setSessionComplete(true);
-          setMessage("All 5 phrases completed! Saving your speaking XP…");
+          setMessage("All 5 phrases completed! Saving your speaking time and XP…");
+          void saveSpeakingSession();
           void completeTask("speak");
         }
       };
@@ -723,7 +749,7 @@ function App() {
               {message && <div className="coach-feedback"><Sparkles size={17}/><div><strong>Coach feedback</strong><p>{message}</p></div></div>}
               <p className="notice">Voice recognition depends on browser support and microphone permission. AI feedback is used when the backend AI provider is configured. Voice recordings are not stored by this app.</p>
               {sessionComplete && <div className="inline-message"><strong>Practice complete!</strong> You finished all {phrases.length} phrases. {authenticated?"Your speaking task XP is being saved to your account.":"Sign in to save XP to your account."}<div className="practice-controls"><button className="button button-primary" onClick={()=>{setPhraseIndex(0);setSessionComplete(false);setSpokenTranscript("");setCoachCorrect(null);setCoachAttempts(0);setMessage("New practice started. Listen to the first phrase.");}}>Practise again</button></div></div>}
-              <div className="coach-footer-stats"><span><strong>{coachAttempts}</strong> speaking attempts</span><span><strong>{phraseIndex}</strong> phrases cleared</span><span><strong>{Math.max(0,phrases.length-phraseIndex)}</strong> to go</span></div>
+              <div className="coach-footer-stats"><span><strong>{coachAttempts}</strong> speaking attempts</span><span><strong>{phraseIndex}</strong> phrases cleared</span><span><strong>{Math.max(0,phrases.length-phraseIndex)}</strong> to go</span><span><strong>{Math.floor(speakingSecondsToday/60)}m {speakingSecondsToday%60}s</strong> spoken today</span></div>
             </section><aside className="coach-side-panel"><div className="coach-side-icon"><GraduationCap size={23}/></div><h3>Your speaking goals</h3><p>Small, repeatable steps help you speak more naturally over time.</p><div className="coach-goal-row"><span className="coach-goal-check"><Check size={14}/></span><div><strong>Listen carefully</strong><small>Notice sentence rhythm</small></div></div><div className="coach-goal-row"><span className="coach-goal-check"><Check size={14}/></span><div><strong>Speak out loud</strong><small>Practise the whole sentence</small></div></div><div className="coach-goal-row"><span className="coach-goal-check"><Check size={14}/></span><div><strong>Learn from feedback</strong><small>Try again when needed</small></div></div><div className="coach-side-tip"><Sparkles size={16}/><span>Tip: Speak at a comfortable pace. Clear words matter more than speed.</span></div></aside></div>
           </>}
 
