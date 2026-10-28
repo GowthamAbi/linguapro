@@ -11,7 +11,6 @@ import type { FormEvent, ReactNode } from "react";
 import type { LearningLevel, LearningPhrase, LearningTask, Page, UserProfile } from "./types";
 import TeacherCourseBuilder from "./components/TeacherCourseBuilder";
 import TeacherCourseProgress from "./components/TeacherCourseProgress";
-import StudentCourseLibrary from "./components/StudentCourseLibrary";
 
 const phrases: LearningPhrase[] = [
   { phrase: "Could you please help me?", meaning: "Ask someone for help politely.", example: "Could you please help me with this report?" },
@@ -93,7 +92,6 @@ function App() {
     } catch { return defaultTasks; }
   });
   const [phraseIndex, setPhraseIndex] = useState(0);
-  const [learningLevel, setLearningLevel] = useState<"all" | LearningLevel>("all");
   const [vocabAnswers, setVocabAnswers] = useState<Record<string, string>>(() => {
     try { return JSON.parse(localStorage.getItem("linguapro-vocab-answers") || "{}") as Record<string, string>; } catch { return {}; }
   });
