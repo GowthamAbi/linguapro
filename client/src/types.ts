@@ -1,4 +1,4 @@
-export type Page = "dashboard" | "courses" | "speaking" | "vocabulary" | "progress" | "profile" | "plans" | "owner" | "teacher" | "assignments";
+export type Page = "dashboard" | "courses" | "speaking" | "vocabulary" | "progress" | "profile" | "plans" | "owner" | "teacher" | "assignments" | "placement";
 export type LearningLevel = "Basic" | "Intermediate" | "Advanced";
 
 export interface UserProfile {
