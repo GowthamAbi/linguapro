@@ -771,6 +771,7 @@ function App() {
             initialLevel={profile.level}
             onLevelDetermined={(level) => { void savePlacementLevel(level); }}
             onOpenRoadmap={() => navigate("courses")}
+            onOpenTest={() => navigate("placement")}
             onStartSpeaking={(phrase) => { if (phrase) setSpokenTranscript(phrase); navigate("speaking"); }}
           />}
 
