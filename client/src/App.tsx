@@ -284,7 +284,12 @@ function App() {
     setPage(next);
     setMenuOpen(false);
     setMessage("");
-    if (next === "speaking") { setSpokenTranscript(""); setCoachCorrect(null); setCoachAttempts(0); }
+    if (next === "speaking") {
+      setSpokenTranscript(""); setCoachCorrect(null); setCoachAttempts(0);
+      setPhraseIndex(0); setSessionComplete(false); speakingStartedAtRef.current = null;
+    } else if (page === "speaking") {
+      speakingStartedAtRef.current = null;
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -325,7 +330,6 @@ function App() {
   }
 
   function playPhrase() {
-    if (speakingStartedAtRef.current === null) speakingStartedAtRef.current = Date.now();
     if (!("speechSynthesis" in window)) {
       setMessage("Speech playback is not supported by this browser.");
       return;
