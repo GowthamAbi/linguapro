@@ -66,7 +66,7 @@ function pageFromPath(pathname: string): Page {
   if (path === "/settings") return "profile";
   if (path === "/lessons" || path.startsWith("/lessons/")) return "speaking";
   if (path === "/privacy" || path === "/terms") return "profile";
-  const allowed: Page[] = ["dashboard", "courses", "speaking", "vocabulary", "progress", "profile", "plans", "assignments", "placement"];
+  const allowed: Page[] = ["dashboard", "courses", "speaking", "vocabulary", "progress", "profile", "plans", "placement"];
   const candidate = path.slice(1) as Page;
   return allowed.includes(candidate) ? candidate : "dashboard";
 }
@@ -145,7 +145,6 @@ function App() {
     if (authToken) headers.set("Authorization", "Bearer " + authToken);
     return fetch(url, { ...init, headers, credentials: "include" });
   }
-  const ownerEmail = (import.meta.env.VITE_OWNER_EMAIL as string | undefined)?.trim().toLowerCase() ?? "";
   const isOwner: boolean = false;
   const isTeacher: boolean = false;
   const [ownerSection, setOwnerSection] = useState(() => ownerSectionFromPath(window.location.pathname));
