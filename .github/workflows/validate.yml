@@ -3,6 +3,8 @@ name: Validate LinguaPro
 on:
   pull_request:
     branches: ["main"]
+  push:
+    branches: ["feature/supernova-inspired-experience"]
   workflow_dispatch:
 
 permissions:
