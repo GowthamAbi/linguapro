@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import "./styles-teacher-progress.css";
+import StudentLearningRoadmap from "./components/StudentLearningRoadmap";
+import "./components/student-roadmap.css";
 import {
   AudioLines, BookOpen, Check, ChevronRight, CircleUserRound, Crown,
   Flame, GraduationCap, Languages, LayoutDashboard, LockKeyhole, LogIn,
-  Menu, Mic, Settings, Sparkles, Star, Target, TrendingUp, Volume2, X, Users, ShieldCheck, ClipboardList, Send,
+  Menu, Mic, Settings, Sparkles, Star, Target, TrendingUp, Volume2, X, Users, ShieldCheck, ClipboardList, Send, CircleHelp,
 } from "lucide-react";
 import type { FormEvent, ReactNode } from "react";
 import type { LearningLevel, LearningPhrase, LearningTask, Page, UserProfile } from "./types";
@@ -33,11 +35,11 @@ const defaultProfile: UserProfile = {
 
 const navItems: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { id: "courses", label: "My learning", icon: GraduationCap },
+  { id: "courses", label: "Learning map", icon: GraduationCap },
+  { id: "placement", label: "Level test", icon: CircleHelp },
   { id: "speaking", label: "Speaking", icon: AudioLines },
   { id: "vocabulary", label: "Vocabulary", icon: BookOpen },
   { id: "progress", label: "My progress", icon: TrendingUp },
-  { id: "assignments", label: "Assignments", icon: ClipboardList },
   { id: "profile", label: "Profile & settings", icon: Settings },
 ];
 
@@ -52,11 +54,10 @@ function readStored<T>(key: string, fallback: T): T {
 
 function pageFromPath(pathname: string): Page {
   const path = pathname.replace(/\/+$/, "") || "/";
-  if (path === "/owner" || (path.startsWith("/admin/") && path !== "/admin/signin")) return "owner";
-  if (path === "/admin/signin") return "owner";
-  if (path === "/teacher") return "teacher";
+  if (path === "/owner" || path === "/teacher" || path.startsWith("/admin/")) return "dashboard";
+  if (path === "/placement-test") return "placement";
   if (path === "/student" || path === "/" || path === "/dashboard" || path === "/onboarding") return "dashboard";
-  if (path === "/features" || path === "/courses" || path.startsWith("/courses/")) return "courses";
+  if (path === "/features" || path === "/courses" || path.startsWith("/courses/") || path === "/learning-map") return "courses";
   if (path === "/pricing") return "plans";
   if (path === "/login" || path === "/register") return "dashboard";
   if (path === "/practice" || path === "/study-play") return "vocabulary";
@@ -65,7 +66,7 @@ function pageFromPath(pathname: string): Page {
   if (path === "/settings") return "profile";
   if (path === "/lessons" || path.startsWith("/lessons/")) return "speaking";
   if (path === "/privacy" || path === "/terms") return "profile";
-  const allowed: Page[] = ["dashboard", "courses", "speaking", "vocabulary", "progress", "profile", "plans", "assignments"];
+  const allowed: Page[] = ["dashboard", "courses", "speaking", "vocabulary", "progress", "profile", "plans", "assignments", "placement"];
   const candidate = path.slice(1) as Page;
   return allowed.includes(candidate) ? candidate : "dashboard";
 }
@@ -145,8 +146,8 @@ function App() {
     return fetch(url, { ...init, headers, credentials: "include" });
   }
   const ownerEmail = (import.meta.env.VITE_OWNER_EMAIL as string | undefined)?.trim().toLowerCase() ?? "";
-  const isOwner = authenticated && (profile.role === "owner" || (!!ownerEmail && profile.email.trim().toLowerCase() === ownerEmail));
-  const isTeacher = authenticated && profile.role === "teacher" && !isOwner;
+  const isOwner: boolean = false;
+  const isTeacher: boolean = false;
   const [ownerSection, setOwnerSection] = useState(() => ownerSectionFromPath(window.location.pathname));
   const [ownerStats, setOwnerStats] = useState<{ totalUsers: number; totalTeachers: number; totalCourses: number; premiumUsers: number; freeUsers: number; activeLearners: number; totalXp: number } | null>(null);
   const [ownerUsers, setOwnerUsers] = useState<Array<{ _id: string; name: string; email: string; role?: string; plan: string; targetLanguage: string; level: string; totalXp: number; currentStreak: number; createdAt: string }>>([]);
@@ -280,7 +281,7 @@ function App() {
   const speakingSecondsPrevious30Days = speakingHistory.filter((item) => item.activityDate >= speakingDayKey(59) && item.activityDate < speakingDayKey(29)).reduce((sum, item) => sum + item.speakingSeconds, 0);
 
   function navigate(next: Page) {
-    const path = next === "owner" ? "/admin/overview" : next === "teacher" ? "/teacher" : next === "dashboard" ? "/dashboard" : next === "plans" ? "/pricing" : next === "profile" ? "/settings" : next === "vocabulary" ? "/practice" : "/" + next;
+    const path = next === "owner" || next === "teacher" ? "/dashboard" : next === "placement" ? "/placement-test" : next === "courses" ? "/learning-map" : next === "dashboard" ? "/dashboard" : next === "plans" ? "/pricing" : next === "profile" ? "/settings" : next === "vocabulary" ? "/practice" : "/" + next;
     if (window.location.pathname !== path) window.history.pushState({}, "", path);
     setPage(next);
     setMenuOpen(false);
