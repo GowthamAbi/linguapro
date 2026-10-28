@@ -128,7 +128,7 @@ function App() {
   const [onboardingGoal, setOnboardingGoal] = useState<"Daily conversations" | "Career growth" | "Confidence" | "School and family">("Career growth");
   const [onboardingMinutes, setOnboardingMinutes] = useState<10 | 15 | 20 | 30 | 60>(20);
   const [onboardingBusy, setOnboardingBusy] = useState(false);
-  const [authMode, setAuthMode] = useState<"login" | "register" | null>(() => window.location.pathname === "/register" ? "register" : (window.location.pathname === "/login" || window.location.pathname === "/student/signin" || window.location.pathname === "/admin/signin" || window.location.pathname.startsWith("/admin/") || window.location.pathname === "/owner") ? "login" : null);
+  const [authMode, setAuthMode] = useState<"login" | "register" | null>(() => window.location.pathname === "/register" ? "register" : (window.location.pathname === "/login" || window.location.pathname === "/student/signin") ? "login" : null);
   const [authName, setAuthName] = useState("");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
@@ -244,7 +244,7 @@ function App() {
   }
 
   useEffect(() => {
-    const onPopState = () => { setPage(pageFromPath(window.location.pathname)); if (window.location.pathname.startsWith("/admin/")) setOwnerSection(ownerSectionFromPath(window.location.pathname)); if (window.location.pathname === "/login") setAuthMode("login"); if (window.location.pathname === "/register") setAuthMode("register"); };
+    const onPopState = () => { setPage(pageFromPath(window.location.pathname)); if (window.location.pathname === "/login") setAuthMode("login"); if (window.location.pathname === "/register") setAuthMode("register"); };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
@@ -258,13 +258,11 @@ function App() {
         const user = payload.data?.user;
         if (user) {
           setAuthenticated(true);
-          setProfile((current) => ({ ...current, ...user, role: user.role ?? "student" }));
+          setProfile((current) => ({ ...current, ...user, role: "student" }));
           const requestedRolePath = window.location.pathname;
-          if (["/owner", "/teacher", "/student"].includes(requestedRolePath) || requestedRolePath.startsWith("/admin/") || requestedRolePath === "/student/signin") {
-            const destination = user.role === "owner" ? "/owner" : user.role === "teacher" ? "/teacher" : "/student";
-            const destinationPage: Page = user.role === "owner" ? "owner" : user.role === "teacher" ? "teacher" : "dashboard";
-            if (requestedRolePath !== destination) window.history.replaceState({}, "", destination);
-            setPage(destinationPage);
+          if (["/owner", "/teacher", "/student", "/student/signin"].includes(requestedRolePath) || requestedRolePath.startsWith("/admin/")) {
+            window.history.replaceState({}, "", "/dashboard");
+            setPage("dashboard");
           }
           await loadServerProgress();
         }
@@ -299,6 +297,20 @@ function App() {
     const next = { ...profile, [key]: value };
     setProfile(next);
     localStorage.setItem("linguapro-profile", JSON.stringify(next));
+  }
+
+  async function savePlacementLevel(level: LearningLevel) {
+    setProfile((current) => {
+      const next = { ...current, level, role: "student" as const };
+      localStorage.setItem("linguapro-profile", JSON.stringify(next));
+      return next;
+    });
+    if (authenticated && apiBase) {
+      try {
+        const response = await apiFetch(apiBase + "/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ level }) });
+        if (!response.ok) setMessage("Your level is saved on this device. Account sync will retry when available.");
+      } catch { setMessage("Your level is saved on this device. Account sync will retry when available."); }
+    }
   }
 
   async function completeTask(id: string) {
@@ -545,11 +557,16 @@ function App() {
         });
       }
       setAuthenticated(true);
-      const signedInRole = payload.data?.user?.role ?? "student";
       setAuthMode(null);
-      if (signedInRole === "owner") { const section = window.location.pathname.startsWith("/admin/") && window.location.pathname !== "/admin/signin" ? ownerSectionFromPath(window.location.pathname) : "overview"; setOwnerSection(section); if (!window.location.pathname.startsWith("/admin/") || window.location.pathname === "/admin/signin") window.history.replaceState({}, "", "/admin/overview"); setPage("owner"); }
-      else if (signedInRole === "teacher") { window.history.replaceState({}, "", "/teacher"); setPage("teacher"); }
-      else { window.history.replaceState({}, "", "/dashboard"); setPage("dashboard"); if (wasRegistering) { setOnboardingStep(0); setOnboardingOpen(true); } }
+      setProfile((current) => {
+        const next = { ...current, ...(signedInUser ?? {}), role: "student" as const };
+        localStorage.setItem("linguapro-profile", JSON.stringify(next));
+        return next;
+      });
+      window.history.replaceState({}, "", "/dashboard");
+      setPage("dashboard");
+      if (wasRegistering) { setOnboardingStep(0); setOnboardingOpen(true); }
+      else if (!localStorage.getItem("linguapro-placement-level")) { setPage("placement"); window.history.replaceState({}, "", "/placement-test"); }
       await loadServerProgress();
       setMessage(wasRegistering ? "" : "You are signed in.");
     } catch (error) {
@@ -586,7 +603,9 @@ function App() {
         return next;
       });
       setOnboardingOpen(false);
-      setMessage("Your learning path is ready. Let’s start learning!");
+      setMessage("");
+      setPage("placement");
+      window.history.replaceState({}, "", "/placement-test");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Could not save your preferences.");
     } finally {
