@@ -123,10 +123,10 @@ export async function recordSpeakingActivity(
   response.status(201).json({
     message: "Speaking practice time saved.",
     data: {
-      speakingSecondsToday: activity.speakingSeconds,
-      sessionsCompleted: activity.sessionsCompleted,
-      phrasesCompleted: activity.phrasesCompleted,
-      attempts: activity.attempts,
+      speakingSecondsToday: activity?.speakingSeconds ?? 0,
+      sessionsCompleted: activity?.sessionsCompleted ?? 0,
+      phrasesCompleted: activity?.phrasesCompleted ?? 0,
+      attempts: activity?.attempts ?? 0,
     },
   });
 }
