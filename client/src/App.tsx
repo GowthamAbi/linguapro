@@ -623,7 +623,7 @@ function App() {
         <button className="icon-button mobile-menu-button" aria-label="Open menu" onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X /> : <Menu />}</button>
         <button className="brand" onClick={() => navigate("dashboard")}><span className="brand-mark">◈</span> Lingua<span className="brand-accent">Pro</span></button>
         <div className="topbar-right">
-          {isOwner && <button className="plan-chip owner-chip" onClick={() => { setOwnerSection("overview"); void loadOwnerData("overview"); navigate("owner" as Page); }}><ShieldCheck size={14} /> OWNER</button>}{isTeacher && <button className="plan-chip owner-chip" onClick={() => navigate("teacher" as Page)}><GraduationCap size={14} /> TEACHER</button>}<button className="plan-chip" onClick={() => navigate("plans")}><Sparkles size={14} /> {profile.plan.toUpperCase()} PLAN</button>
+          <button className="plan-chip" onClick={() => navigate("placement")}><CircleHelp size={14} /> LEVEL TEST</button>
           <button className="avatar-button" onClick={() => navigate("profile")} aria-label="Profile"><CircleUserRound size={20} /></button>
           <button className="text-button" onClick={() => { setAuthMode("login"); setMessage(""); }}><LogIn size={16} /> Sign in</button>
         </div>
@@ -631,7 +631,7 @@ function App() {
 
       <div className="app-layout">
         <aside className={"sidebar " + (menuOpen ? "sidebar-open" : "")}>
-          <div className="sidebar-caption">{isOwner ? "OWNER CONSOLE" : isTeacher ? "TEACHER WORKSPACE" : "YOUR WORKSPACE"}</div>
+          <div className="sidebar-caption">YOUR LEARNING JOURNEY</div>
           <nav className="sidebar-nav">
             {isOwner ? [
               { id: "overview", label: "Dashboard", icon: LayoutDashboard }, { id: "students", label: "Students", icon: GraduationCap },
@@ -648,8 +648,8 @@ function App() {
             ].map(({ id, label, icon: Icon }) => <button key={id} className={"nav-item " + (ownerSection === id ? "active" : "")} onClick={() => { setOwnerSection(id); const route = id === "overview" ? "/admin/overview" : id === "admins" ? "/admin/users" : id === "pricing" ? "/admin/subscriptions" : id === "reports" ? "/admin/analytics" : id === "assessments" ? "/admin/questions" : "/admin/" + id; window.history.pushState({}, "", route); if (["overview", "users", "students", "teachers"].includes(id)) void loadOwnerData(id as "overview" | "users" | "students" | "teachers"); }}><Icon size={17} /><span>{label}</span></button>)
             : navItems.map(({ id, label, icon: Icon }) => <button key={id} className={"nav-item " + (page === id ? "active" : "")} onClick={() => navigate(id)}><Icon size={18} /><span>{label}</span>{id === "dashboard" && <span className="nav-dot" />}</button>)}
           </nav>
-          {!isOwner && <div className="sidebar-premium"><div className="premium-icon"><Crown size={20} /></div><strong>Unlock your potential</strong><p>Get more lessons and guided practice with Premium.</p><button className="button button-light" onClick={() => navigate("plans")}>Explore plans <ChevronRight size={15} /></button></div>}
-          <div className="sidebar-foot">LinguaPro · {isOwner ? "Platform administration" : "Learn every day"}</div>
+          <div className="sidebar-premium"><div className="premium-icon"><Crown size={20} /></div><strong>Your next level awaits</strong><p>Take a level test and follow your personal English learning route.</p><button className="button button-light" onClick={() => navigate("placement")}>Take level test <ChevronRight size={15} /></button></div>
+          <div className="sidebar-foot">LinguaPro · Learn every day</div>
         </aside>
 
         <main className="page-content">
@@ -772,15 +772,21 @@ function App() {
             </section>)}
             {!studentAssignments.length && !assignmentMessage && <section className="surface-card"><h3>No assignments yet</h3><p>Assignments from your teacher will appear here.</p></section>}
           </>}
-          {page === "courses" && <>
-            <PageTitle eyebrow="YOUR LEARNING PATH" title="My learning" subtitle="A clear path from first words to confident conversations." />
-            <section className="student-learning-hero">
-              <div className="student-learning-hero-copy"><span className="course-builder-eyebrow">YOUR ENGLISH JOURNEY</span><h2>Small steps. <span>Confident English.</span></h2><p>Learn a lesson, practise what you learn, speak out loud, and review your progress. Your course progress and XP are saved to your account.</p><div className="student-learning-method"><span>01 Learn</span><i>→</i><span>02 Practise</span><i>→</i><span>03 Speak</span><i>→</i><span>04 Feedback</span><i>→</i><span>05 Revise</span><i>→</i><span>06 Apply</span></div></div>
-              <div className="student-learning-hero-art" aria-hidden="true"><div className="learning-book-orb"><BookOpen size={42}/></div><span className="learning-float learning-float-one">Aa</span><span className="learning-float learning-float-two"><Languages size={20}/></span><span className="learning-float learning-float-three"><Star size={18}/></span></div>
-            </section>
-            <div className="student-learning-levels"><button type="button" className={"student-level-button " + (learningLevel === "Basic" ? "selected" : "")} onClick={() => setLearningLevel(learningLevel === "Basic" ? "all" : "Basic")}><span>🌱</span><div><strong>Basic</strong><small>Build your foundations</small></div><small>Choose level ↗</small></button><button type="button" className={"student-level-button " + (learningLevel === "Intermediate" ? "selected" : "")} onClick={() => setLearningLevel(learningLevel === "Intermediate" ? "all" : "Intermediate")}><span>🚀</span><div><strong>Intermediate</strong><small>Use English with confidence</small></div><small>Choose level ↗</small></button><button type="button" className={"student-level-button " + (learningLevel === "Advanced" ? "selected" : "")} onClick={() => setLearningLevel(learningLevel === "Advanced" ? "all" : "Advanced")}><span>🎓</span><div><strong>Advanced</strong><small>Communicate fluently</small></div><small>Choose level ↗</small></button></div>
-            <StudentCourseLibrary apiBase={apiBase} authToken={authToken} initialLevel={learningLevel} />
-          </>}
+          {page === "placement" && <StudentLearningRoadmap
+            mode="test"
+            initialLevel={profile.level}
+            onLevelDetermined={(level) => { void savePlacementLevel(level); }}
+            onOpenRoadmap={() => navigate("courses")}
+            onStartSpeaking={(phrase) => { if (phrase) setSpokenTranscript(phrase); navigate("speaking"); }}
+          />}
+
+          {page === "courses" && <StudentLearningRoadmap
+            mode="roadmap"
+            initialLevel={profile.level}
+            onLevelDetermined={(level) => { void savePlacementLevel(level); }}
+            onOpenRoadmap={() => navigate("courses")}
+            onStartSpeaking={(phrase) => { if (phrase) setSpokenTranscript(phrase); navigate("speaking"); }}
+          />}
 
           {page === "speaking" && <>
             <PageTitle eyebrow="LINGUAPRO AI COACH" title="Speak with confidence" subtitle="A personal English coach for everyday life, workplace conversations, and career growth." />
