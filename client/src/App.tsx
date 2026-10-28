@@ -497,7 +497,7 @@ function App() {
       else if (signedInRole === "teacher") { window.history.replaceState({}, "", "/teacher"); setPage("teacher"); }
       else { window.history.replaceState({}, "", "/dashboard"); setPage("dashboard"); if (wasRegistering) { setOnboardingStep(0); setOnboardingOpen(true); } }
       await loadServerProgress();
-      setMessage("You are signed in.");
+      setMessage(wasRegistering ? "" : "You are signed in.");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Unable to sign in.");
     } finally {
