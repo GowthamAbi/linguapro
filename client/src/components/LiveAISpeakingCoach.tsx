@@ -3,7 +3,7 @@ import { BarChart3, Mic, MicOff, Send, Sparkles, Volume2 } from "lucide-react";
 type Props = { apiBase:string; authToken:string; authenticated:boolean; level:"Basic"|"Intermediate"|"Advanced" };
 type Turn = { id?:string; transcript:string; correctedSentence:string; explanation:string; coachReply:string; grammarIssues:string[]; vocabularySuggestions:string[]; createdAt?:string };
 type Report = { current:{turns:number;words:number;corrections:number}; previous:{turns:number;words:number;corrections:number}; daily:Array<{date:string;turns:number;words:number;corrections:number}>; recent:Turn[] };
-type Recognition = { lang:string; continuous:boolean; interimResults:boolean; onresult:((event:{resultIndex:number;results:ArrayLike<ArrayLike<{transcript:string;isFinal?:boolean}>>})=>void)|null; onerror:((event:{error?:string})=>void)|null; onend:(()=>void)|null; start:()=>void; stop:()=>void };
+type Recognition = { lang:string; continuous:boolean; interimResults:boolean; onresult:((event:{resultIndex:number;results:ArrayLike<{isFinal?:boolean;0?:{transcript:string}}>})=>void)|null; onerror:((event:{error?:string})=>void)|null; onend:(()=>void)|null; start:()=>void; stop:()=>void };
 type RecognitionWindow = Window & { SpeechRecognition?:new()=>Recognition; webkitSpeechRecognition?:new()=>Recognition };
 export default function LiveAISpeakingCoach({apiBase,authToken,authenticated,level}:Props) {
  const [active,setActive]=useState(false),[busy,setBusy]=useState(false),[liveText,setLiveText]=useState(""),[draft,setDraft]=useState(""),[turns,setTurns]=useState<Turn[]>([]),[error,setError]=useState(""),[period,setPeriod]=useState<"day"|"week">("week"),[report,setReport]=useState<Report|null>(null);
@@ -27,7 +27,7 @@ export default function LiveAISpeakingCoach({apiBase,authToken,authenticated,lev
   setError("");const browser=window as RecognitionWindow;const API=browser.SpeechRecognition??browser.webkitSpeechRecognition;
   if(!API){setError("Live speech recognition is not supported here. Use Chrome and allow microphone access.");return}
   try{const recognition=new API();recognition.lang="en-IN";recognition.continuous=true;recognition.interimResults=true;
-   recognition.onresult=(event)=>{let interim="";const finals:string[]=[];for(let i=event.resultIndex;i<event.results.length;i++){const result=event.results[i];const phrase=result?.[0]?.transcript?.trim()??"";if(result?.[0]?.isFinal){if(phrase)finals.push(phrase)}else interim+=phrase+" "}if(interim.trim())setLiveText(interim.trim());if(finals.length){const phrase=finals.join(" ").trim();setLiveText(phrase);void sendTranscript(phrase)}};
+   recognition.onresult=(event)=>{let interim="";const finals:string[]=[];for(let i=event.resultIndex;i<event.results.length;i++){const result=event.results[i];const phrase=result?.[0]?.transcript?.trim()??"";if(result?.isFinal){if(phrase)finals.push(phrase)}else interim+=phrase+" "}if(interim.trim())setLiveText(interim.trim());if(finals.length){const phrase=finals.join(" ").trim();setLiveText(phrase);void sendTranscript(phrase)}};
    recognition.onerror=(event)=>{if(event.error!=="no-speech"&&event.error!=="aborted")setError("Microphone error: "+(event.error??"please try again"))};
    recognition.onend=()=>{if(activeRef.current){try{recognition.start()}catch{/* recognizer is still closing */}}};
    recognitionRef.current=recognition;sessionIdRef.current="live-"+Date.now();activeRef.current=true;setActive(true);recognition.start()
