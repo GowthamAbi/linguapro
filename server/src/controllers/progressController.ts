@@ -16,11 +16,12 @@ export async function getProgress(
   response: Response,
 ): Promise<void> {
   const today = todayDate();
-  const [history, user, speakingToday, speakingHistory] = await Promise.all([
+  const [history, user, speakingToday, speakingHistory, learningPath] = await Promise.all([
     LearningProgress.find({ userId: request.userId }).sort({ createdAt: -1 }).limit(100),
     User.findById(request.userId).select("totalXp currentStreak lastActiveDate"),
     SpeakingActivity.findOne({ userId: request.userId, activityDate: today }),
     SpeakingActivity.find({ userId: request.userId }).sort({ activityDate: -1 }).limit(60),
+    LearningPathState.findOne({ userId: request.userId }).select("completedLessonIds").lean(),
   ]);
 
   response.json({
@@ -31,6 +32,7 @@ export async function getProgress(
       completedToday: history.filter((item) => item.completedOn === today),
       speakingSecondsToday: speakingToday?.speakingSeconds ?? 0,
       speakingHistory,
+      completedLessonIds: learningPath?.completedLessonIds ?? [],
       history,
     },
   });
