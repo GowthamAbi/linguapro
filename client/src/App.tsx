@@ -469,6 +469,7 @@ function App() {
           setMessage("All 5 phrases completed! Saving your speaking time and XP…");
           void saveSpeakingSession();
           void completeTask("speak");
+          void completeTask("listen");
         }
       };
 
