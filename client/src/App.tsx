@@ -342,6 +342,15 @@ function App() {
     setMessage("Sign in to save your learning progress to your account. This demo progress is saved on this device.");
   }
 
+  function completeVocabularyWord(word: string) {
+    if (vocabCompleted.includes(word)) return;
+    const nextCompleted = [...vocabCompleted, word];
+    setVocabCompleted(nextCompleted);
+    if (nextCompleted.length === 6) {
+      void completeTask("words");
+    }
+  }
+
   function playPhrase() {
     if (!("speechSynthesis" in window)) {
       setMessage("Speech playback is not supported by this browser.");
@@ -839,7 +848,7 @@ function App() {
                       if (pass) {
                         setVocabSpoken(prev => ({ ...prev, [item.word]: true }));
                         if (vocabChecked[item.word] && vocabAnswers[item.word] === item.answer) {
-                          setVocabCompleted(prev => prev.includes(item.word) ? prev : [...prev, item.word]);
+                          completeVocabularyWord(item.word);
                           setTimeout(() => setVocabCurrentIndex(index => Math.min(index + 1, 5)), 900);
                         }
                       }
@@ -851,7 +860,7 @@ function App() {
                   {vocabSpeechMessage[item.word] && <p className={"vocab-speech-feedback " + (vocabSpoken[item.word] ? "feedback-correct" : "")}>{vocabSpeechMessage[item.word]}</p>}
                   <p className="vocab-step-status">Sentence: {vocabSpoken[item.word] ? "✓ completed" : "Not completed"} · Answer: {vocabChecked[item.word] && vocabAnswers[item.word] === item.answer ? "✓ correct" : "Not completed"}</p>
                   <div className="vocab-quiz"><strong>{item.question}</strong><div className="vocab-options">{item.options.map(option => <label className={"vocab-option " + (checked && option === item.answer ? "is-correct" : "") + (checked && vocabAnswers[item.word] === option && option !== item.answer ? " is-wrong" : "")} key={option}><input type="radio" name={"vocab-" + item.word} value={option} checked={vocabAnswers[item.word] === option} onChange={() => { setVocabAnswers(prev => ({ ...prev, [item.word]: option })); setVocabChecked(prev => ({ ...prev, [item.word]: false })); }} /><span>{option}</span></label>)}</div>
-                    {!checked ? <button className="button button-outline" disabled={!vocabAnswers[item.word]} onClick={() => { const isCorrect = vocabAnswers[item.word] === item.answer; setVocabChecked(prev => ({ ...prev, [item.word]: true })); if (isCorrect && vocabSpoken[item.word]) { setVocabCompleted(prev => prev.includes(item.word) ? prev : [...prev, item.word]); setTimeout(() => setVocabCurrentIndex(index => Math.min(index + 1, 5)), 900); } }}>Check answer</button> : <div className={"vocab-feedback " + (correct ? "feedback-correct" : "feedback-wrong")}>{correct ? "Correct! நல்ல பதில்." : "Not quite. சரியான பதில்: " + item.answer}{!correct && <button className="inline-link" onClick={() => { setVocabAnswers(prev => ({ ...prev, [item.word]: item.answer })); setVocabChecked(prev => ({ ...prev, [item.word]: true })); if (vocabSpoken[item.word]) { setVocabCompleted(prev => prev.includes(item.word) ? prev : [...prev, item.word]); setTimeout(() => setVocabCurrentIndex(index => Math.min(index + 1, 5)), 900); } }}>Show correct answer</button>}</div>}
+                    {!checked ? <button className="button button-outline" disabled={!vocabAnswers[item.word]} onClick={() => { const isCorrect = vocabAnswers[item.word] === item.answer; setVocabChecked(prev => ({ ...prev, [item.word]: true })); if (isCorrect && vocabSpoken[item.word]) { completeVocabularyWord(item.word); setTimeout(() => setVocabCurrentIndex(index => Math.min(index + 1, 5)), 900); } }}>Check answer</button> : <div className={"vocab-feedback " + (correct ? "feedback-correct" : "feedback-wrong")}>{correct ? "Correct! நல்ல பதில்." : "Not quite. சரியான பதில்: " + item.answer}{!correct && <button className="inline-link" onClick={() => { setVocabAnswers(prev => ({ ...prev, [item.word]: item.answer })); setVocabChecked(prev => ({ ...prev, [item.word]: true })); if (vocabSpoken[item.word]) { completeVocabularyWord(item.word); setTimeout(() => setVocabCurrentIndex(index => Math.min(index + 1, 5)), 900); } }}>Show correct answer</button>}</div>}
                   </div>
                 </div>
                 {done && <span className="vocab-done" title="Practised"><Check size={16} /></span>}
