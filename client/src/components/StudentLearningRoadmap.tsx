@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronRight, CircleHelp, LockKeyhole, Mic, RotateCcw, Volume2 } from "lucide-react";
 import type { LearningLevel } from "../types";
 
@@ -420,6 +420,12 @@ export default function StudentLearningRoadmap({ mode, initialLevel, apiBase, au
   const [lessonQuizSubmitted, setLessonQuizSubmitted] = useState(false);
   const [speakingTranscript, setSpeakingTranscript] = useState("");
   const [speakingFeedback, setSpeakingFeedback] = useState("");
+  const [speakingIndex, setSpeakingIndex] = useState(0);
+  const [speakingListening, setSpeakingListening] = useState(false);
+  const [speakingAttempts, setSpeakingAttempts] = useState(0);
+  const [speakingMatch, setSpeakingMatch] = useState<number | null>(null);
+  const speakingAttemptsRef = useRef(0);
+  const speakingStartedAtRef = useRef<number | null>(null);
   const placementScore = placementQuestions.filter((question, index) => answers[index] === question.answer).length;
   const placementLevel: LearningLevel = placementScore <= 5 ? "Basic" : placementScore <= 10 ? "Intermediate" : "Advanced";
   const currentLevel = testLevel ?? initialLevel;
@@ -508,25 +514,111 @@ export default function StudentLearningRoadmap({ mode, initialLevel, apiBase, au
   }
 
   function checkSpeaking() {
-    const browser = window as Window & { SpeechRecognition?: new () => { lang: string; onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null; onerror: (() => void) | null; start: () => void }; webkitSpeechRecognition?: new () => { lang: string; onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null; onerror: (() => void) | null; start: () => void } };
+    const browser = window as Window & {
+      SpeechRecognition?: new () => {
+        lang: string;
+        interimResults?: boolean;
+        maxAlternatives?: number;
+        onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+        onerror: ((event?: { error?: string }) => void) | null;
+        onend: (() => void) | null;
+        start: () => void;
+      };
+      webkitSpeechRecognition?: new () => {
+        lang: string;
+        interimResults?: boolean;
+        maxAlternatives?: number;
+        onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
+        onerror: ((event?: { error?: string }) => void) | null;
+        onend: (() => void) | null;
+        start: () => void;
+      };
+    };
     const Recognition = browser.SpeechRecognition ?? browser.webkitSpeechRecognition;
     if (!Recognition || !activeLesson) {
-      onStartSpeaking(activeLesson?.examples[0]);
+      setSpeakingListening(false);
+      setSpeakingFeedback("இந்த browser-ல் speech recognition கிடைக்கவில்லை. Listen செய்து மீண்டும் முயற்சி செய்யுங்கள்.");
+      onStartSpeaking(activeLesson?.examples[speakingIndex] ?? activeLesson?.examples[0]);
       return;
     }
+    if (speakingListening) return;
+    const target = activeLesson.examples[speakingIndex] ?? activeLesson.examples[0];
     const recognition = new Recognition();
     recognition.lang = "en-IN";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 3;
+    setSpeakingTranscript("");
+    setSpeakingMatch(null);
+    setSpeakingListening(true);
+    setSpeakingFeedback("Listening… sentence-ஐ முழுமையாகச் சொல்லுங்கள்.");
+    if (speakingStartedAtRef.current === null) speakingStartedAtRef.current = Date.now();
+
     recognition.onresult = (event) => {
       const transcript = event.results[0]?.[0]?.transcript ?? "";
+      const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9' ]/g, " ").replace(/\s+/g, " ").trim();
+      const expected = normalize(target);
+      const heard = normalize(transcript);
+      const expectedWords = expected.split(" ").filter(Boolean);
+      const heardWords = heard.split(" ").filter(Boolean);
+      const missing = expectedWords.filter((word, index) => !heardWords.includes(word) || expectedWords.indexOf(word) !== index && heardWords.filter((item) => item === word).length < expectedWords.filter((item) => item === word).length);
+      const extra = heardWords.filter((word) => !expectedWords.includes(word));
+      const matched = expectedWords.filter((word) => heardWords.includes(word)).length;
+      const accuracy = expectedWords.length ? Math.round((matched / expectedWords.length) * 100) : 0;
       setSpeakingTranscript(transcript);
-      const expected = activeLesson.examples[0].toLowerCase().replace(/[^a-z0-9 ]/g, "").trim();
-      const heard = transcript.toLowerCase().replace(/[^a-z0-9 ]/g, "").trim();
-      const passed = expected === heard || (expected.split(/\s+/).filter((word) => heard.includes(word)).length / expected.split(/\s+/).length) >= 0.75;
-      setSpeakingFeedback(passed ? "Great attempt! Your sentence is close to the model. Try to keep the words clear." : "Good try. Listen to the model once more, then repeat the full sentence slowly.");
+      setSpeakingMatch(accuracy);
+      speakingAttemptsRef.current += 1;
+      setSpeakingAttempts(speakingAttemptsRef.current);
+
+      if (expected === heard) {
+        const isLastPhrase = speakingIndex >= activeLesson.examples.length - 1;
+        setSpeakingFeedback(isLastPhrase
+          ? "சிறப்பு! இந்த lesson-இன் எல்லா speaking sentences-யும் முடித்துவிட்டீர்கள்."
+          : "சரியாகப் பேசினீர்கள்! அடுத்த sentence-க்கு நகர்கிறோம்…");
+        if (isLastPhrase) {
+          const durationSeconds = Math.max(1, Math.min(3600, Math.round((Date.now() - (speakingStartedAtRef.current ?? Date.now())) / 1000)));
+          if (authenticated && apiBase) {
+            const headers = new Headers({ "Content-Type": "application/json" });
+            if (authToken) headers.set("Authorization", "Bearer " + authToken);
+            void fetch(apiBase + "/progress/speaking-session", {
+              method: "POST", credentials: "include", headers,
+              body: JSON.stringify({ durationSeconds, phrasesCompleted: activeLesson.examples.length, attempts: Math.max(1, speakingAttemptsRef.current) }),
+            }).then((response) => {
+              if (!response.ok) setSpeakingFeedback("Speaking முடிந்தது; ஆனால் server-ல் speaking time சேமிக்க முடியவில்லை. பின்னர் மீண்டும் முயற்சி செய்யலாம்.");
+            }).catch(() => setSpeakingFeedback("Speaking முடிந்தது; internet connection காரணமாக speaking time சேமிக்கப்படவில்லை."));
+          }
+          speakingStartedAtRef.current = null;
+          speakingAttemptsRef.current = 0;
+          setSpeakingAttempts(0);
+          setSpeakingIndex(0);
+        } else {
+          window.setTimeout(() => {
+            setSpeakingIndex((current) => Math.min(current + 1, activeLesson.examples.length - 1));
+            setSpeakingTranscript("");
+            setSpeakingMatch(null);
+          }, 900);
+        }
+      } else {
+        const details = [
+          missing.length ? "விடுபட்ட / தெளிவாகக் கேட்காத வார்த்தைகள்: " + [...new Set(missing)].join(", ") + "." : "",
+          extra.length ? "இலக்கு sentence-ல் இல்லாத வார்த்தைகள்: " + [...new Set(extra)].join(", ") + "." : "",
+        ].filter(Boolean).join(" ");
+        setSpeakingFeedback((details || "Sentence முழுமையாகப் பொருந்தவில்லை.") + " Listen செய்து முழு sentence-ஐ மீண்டும் சொல்லுங்கள்.");
+      }
     };
-    recognition.onerror = () => setSpeakingFeedback("Microphone access or speech recognition is unavailable. Use Listen and try again.");
-    recognition.start();
-    setSpeakingFeedback("Listening… say the example sentence now.");
+    recognition.onerror = (event) => {
+      setSpeakingListening(false);
+      const reason = event?.error === "not-allowed" ? "Microphone permission மறுக்கப்பட்டுள்ளது. Browser settings-ல் microphone access-ஐ அனுமதிக்கவும்." :
+        event?.error === "no-speech" ? "உங்கள் குரல் கேட்கவில்லை. Microphone அருகில் தெளிவாகப் பேசுங்கள்." :
+        "Speech recognition வேலை செய்யவில்லை. மீண்டும் முயற்சி செய்யுங்கள்.";
+      setSpeakingFeedback(reason);
+    };
+    recognition.onend = () => setSpeakingListening(false);
+    try {
+      recognition.start();
+    } catch {
+      setSpeakingListening(false);
+      setSpeakingFeedback("Microphone தொடங்க முடியவில்லை. மீண்டும் முயற்சி செய்யுங்கள்.");
+    }
   }
 
   if (mode === "test") {
@@ -562,7 +654,7 @@ export default function StudentLearningRoadmap({ mode, initialLevel, apiBase, au
       <section className="roadmap-panel"><span className="roadmap-kicker">02 · PRACTICE</span><h2>Fill in the blanks</h2><p>சரியான பதிலைத் தேர்ந்தெடுக்கவும்.</p><div className="lesson-exercise-list">{activeLesson.blanks.map((item, index) => <div className="lesson-exercise" key={item.prompt}><strong>{index + 1}. {item.prompt}</strong><div className="exercise-options">{item.options.map((option) => <button key={option} type="button" className={"exercise-option " + (blankAnswers[index] === option ? "selected" : "") + (blankChecked[index] ? (option === item.answer ? " correct" : blankAnswers[index] === option ? " incorrect" : "") : "")} onClick={() => { if (!blankChecked[index]) setBlankAnswers((old) => ({ ...old, [index]: option })); }}>{option}</button>)}</div>{blankChecked[index] && <small className={blankAnswers[index] === item.answer ? "answer-correct" : "answer-incorrect"}>{blankAnswers[index] === item.answer ? "Correct!" : "Correct answer: " + item.answer}</small>}<button className="exercise-check" type="button" onClick={() => setBlankChecked((old) => ({ ...old, [index]: true }))} disabled={!blankAnswers[index] || blankChecked[index]}>Check</button>{blankChecked[index] && blankAnswers[index] !== item.answer && <button className="exercise-check" type="button" onClick={() => { setBlankChecked((old) => ({ ...old, [index]: false })); setBlankAnswers((old) => { const next = { ...old }; delete next[index]; return next; }); }}>Try again</button>}</div>)}</div>
       </section>
       <section className="roadmap-panel"><span className="roadmap-kicker">03 · SENTENCE BUILDER</span><h2>Arrange the sentence</h2><p>கீழே உள்ள வார்த்தைகளைச் சரியான வரிசையில் தேர்ந்தெடுக்கவும்.</p>{activeLesson.arrange.map((item, index) => <div className="arrange-card" key={item.answer}><strong>{index + 1}. Build the sentence</strong><div className="arrange-word-bank">{item.words.map((word, wordIndex) => <button type="button" key={wordIndex + "-" + word} className="arrange-word" onClick={() => setArrangeAnswers((old) => ({ ...old, [index]: [...(old[index] ?? []), word] }))} disabled={(arrangeAnswers[index] ?? []).length >= item.words.length}>{word}</button>)}</div><div className="arrange-answer">{(arrangeAnswers[index] ?? []).map((word, wordIndex) => <button type="button" key={wordIndex} onClick={() => setArrangeAnswers((old) => ({ ...old, [index]: (old[index] ?? []).filter((_, i) => i !== wordIndex) }))}>{word} ×</button>)}</div><small>{(arrangeAnswers[index] ?? []).join(" ") === item.answer ? "Correct sentence!" : (arrangeAnswers[index] ?? []).length === item.words.length ? "Not quite — tap words below to remove them and try again." : "Tap the words in the correct order."}</small></div>)}</section>
-      <section className="roadmap-panel lesson-speaking"><span className="roadmap-kicker">04 · SPEAK</span><h2>Say it out loud</h2><p>Listen first, then repeat the full sentence. Your browser checks how closely the words match.</p><div className="lesson-speaking-target">“{activeLesson.examples[0]}”</div><div className="lesson-speaking-actions"><button className="button button-outline" onClick={() => listen(activeLesson.examples[0])}><Volume2 size={16} /> Listen</button><button className="button button-primary" onClick={checkSpeaking}><Mic size={16} /> Try speaking</button></div>{speakingTranscript && <p className="lesson-transcript">I heard: “{speakingTranscript}”</p>}{speakingFeedback && <p className="lesson-feedback">{speakingFeedback}</p>}</section>
+      <section className="roadmap-panel lesson-speaking"><span className="roadmap-kicker">04 · SPEAKING COACH</span><h2>Listen, speak & get feedback</h2><p>Sentence {speakingIndex + 1} of {activeLesson.examples.length} · Listen first, then repeat the complete sentence.</p><div className="roadmap-progress-track" role="progressbar" aria-label="Speaking sentence progress" aria-valuemin={0} aria-valuemax={activeLesson.examples.length} aria-valuenow={speakingIndex}><span style={{ width: ((speakingIndex + 1) / activeLesson.examples.length * 100) + "%" }} /></div><div className="lesson-speaking-target">“{activeLesson.examples[speakingIndex] ?? activeLesson.examples[0]}”</div><div className="lesson-speaking-actions"><button className="button button-outline" type="button" onClick={() => listen(activeLesson.examples[speakingIndex] ?? activeLesson.examples[0])}><Volume2 size={16} /> Listen to sentence</button><button className="button button-primary" type="button" onClick={checkSpeaking} disabled={speakingListening}><Mic size={16} /> {speakingListening ? "Listening…" : "Try speaking"}</button></div><p className="lesson-transcript">Attempts this session: {speakingAttempts}{speakingMatch !== null ? " · Word match: " + speakingMatch + "%" : ""}</p>{speakingTranscript && <p className="lesson-transcript">I heard: “{speakingTranscript}”</p>}{speakingFeedback && <p className="lesson-feedback" role="status">{speakingFeedback}</p>}<p className="lesson-feedback">குறிப்பு: இது speech-to-text word matching. இது தனியான pronunciation score அல்ல.</p></section>
       <section className="roadmap-panel lesson-test"><span className="roadmap-kicker">05 · QUICK TEST</span><h2>Check what you learned</h2><p>Complete all practice steps and answer at least two questions correctly to unlock the next level.</p>{activeLesson.quiz.map((question, index) => <div className="lesson-quiz-question" key={question.prompt}><strong>{index + 1}. {question.prompt}</strong><div className="placement-options">{question.options.map((option, optionIndex) => <button type="button" key={option} className={"placement-option " + (lessonQuizAnswers[index] === optionIndex ? "selected" : "")} onClick={() => { if (!lessonQuizSubmitted) setLessonQuizAnswers((old) => ({ ...old, [index]: optionIndex })); }}><span>{String.fromCharCode(65 + optionIndex)}</span>{option}</button>)}</div>{lessonQuizSubmitted && <small className={lessonQuizAnswers[index] === question.answer ? "answer-correct" : "answer-incorrect"}>{question.explanation}</small>}</div>)}{lessonQuizSubmitted && <div className="lesson-result-note">{quizCorrect}/{activeLesson.quiz.length} correct · {lessonPassed ? "Level complete — next level unlocked!" : "Review the answers and retry the test."}</div>}<div className="lesson-test-actions">{!lessonQuizSubmitted ? <button className="button button-primary" disabled={Object.keys(lessonQuizAnswers).length !== activeLesson.quiz.length || !blanksCorrect || !arrangeCorrect} onClick={() => setLessonQuizSubmitted(true)}>Submit lesson test <Check size={16} /></button> : lessonPassed ? <button className="button button-primary" onClick={completeLesson}>Complete level and unlock next <ChevronRight size={16} /></button> : <button className="button button-outline" onClick={() => { setLessonQuizAnswers({}); setLessonQuizSubmitted(false); }}>Try test again <RotateCcw size={16} /></button>}</div></section>
     </div>;
   }
