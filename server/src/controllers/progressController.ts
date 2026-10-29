@@ -80,7 +80,7 @@ export async function completeTask(
 
     response.status(201).json({
       message: "Task completed. Well done!",
-      data: { progress, totalXp: user.totalXp, currentStreak: user.currentStreak },
+      data: { progress, xpEarned, totalXp: user.totalXp, currentStreak: user.currentStreak },
     });
   } catch (error) {
     if (error && typeof error === "object" && "code" in error && error.code === 11000) {

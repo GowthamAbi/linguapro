@@ -324,12 +324,12 @@ function App() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ taskId: id }),
         });
-        const payload = await response.json() as { message?: string; data?: { totalXp?: number; currentStreak?: number } };
+        const payload = await response.json() as { message?: string; data?: { totalXp?: number; currentStreak?: number; xpEarned?: number } };
         if (!response.ok) throw new Error(payload.message ?? "Could not save progress.");
         setServerXp(Number(payload.data?.totalXp ?? 0));
         setServerStreak(Number(payload.data?.currentStreak ?? 0));
         setServerCompletedIds((current) => [...current, id]);
-        setMessage("Great work! Your progress is saved to your account.");
+        setMessage("Daily mission complete! +" + String(payload.data?.xpEarned ?? 0) + " XP earned. Total XP: " + String(payload.data?.totalXp ?? 0) + ". Your progress is saved.");
         return;
       } catch (error) {
         setMessage(error instanceof Error ? error.message : "Could not save progress to your account.");
