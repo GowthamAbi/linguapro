@@ -5,6 +5,7 @@ import { LearningProgress } from "../models/LearningProgress";
 import { User } from "../models/User";
 import { XpEvent } from "../models/XpEvent";
 import { SpeakingActivity } from "../models/SpeakingActivity";
+import { LearningPathState } from "../models/LearningPathState";
 
 const taskRewards: Record<string, number> = { words: 10, speak: 15, listen: 10, review: 5 };
 const taskSchema = z.object({ taskId: z.enum(["words", "speak", "listen", "review"]) });
@@ -87,6 +88,70 @@ export async function completeTask(
 
     throw error;
   }
+}
+
+
+const lessonCompletionSchema = z.object({
+  lessonId: z.string().regex(/^(basic|intermediate|advanced)-[1-5]$/),
+  lessonTitle: z.string().trim().min(1).max(120),
+});
+
+export async function completeLesson(
+  request: AuthenticatedRequest,
+  response: Response,
+): Promise<void> {
+  const parsed = lessonCompletionSchema.safeParse(request.body);
+  if (!parsed.success) {
+    response.status(400).json({ message: "Provide a valid lesson to complete." });
+    return;
+  }
+
+  const { lessonId, lessonTitle } = parsed.data;
+  const today = todayDate();
+  const xpEarned = 20;
+
+  try {
+    await XpEvent.create({
+      userId: request.userId,
+      source: "course-lesson",
+      sourceId: lessonId,
+      label: lessonTitle + " completed",
+      xpEarned,
+      earnedOn: today,
+    });
+  } catch (error) {
+    if (error && typeof error === "object" && "code" in error && error.code === 11000) {
+      const user = await User.findById(request.userId).select("totalXp");
+      response.status(200).json({
+        message: "This lesson was already recorded.",
+        data: { lessonId, xpEarned: 0, totalXp: user?.totalXp ?? 0, alreadyCompleted: true },
+      });
+      return;
+    }
+    throw error;
+  }
+
+  const user = await User.findByIdAndUpdate(
+    request.userId,
+    { $inc: { totalXp: xpEarned } },
+    { new: true, runValidators: true },
+  ).select("totalXp");
+
+  if (!user) {
+    response.status(404).json({ message: "Account not found." });
+    return;
+  }
+
+  await LearningPathState.findOneAndUpdate(
+    { userId: request.userId },
+    { $addToSet: { completedLessonIds: lessonId }, $setOnInsert: { userId: request.userId } },
+    { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true },
+  );
+
+  response.status(201).json({
+    message: "Lesson completed and XP saved.",
+    data: { lessonId, xpEarned, totalXp: user.totalXp, alreadyCompleted: false },
+  });
 }
 
 const speakingSessionSchema = z.object({
