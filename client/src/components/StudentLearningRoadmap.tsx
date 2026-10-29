@@ -412,6 +412,7 @@ export default function StudentLearningRoadmap({ mode, initialLevel, apiBase, au
   const [testSubmitted, setTestSubmitted] = useState(false);
   const [testLevel, setTestLevel] = useState<LearningLevel | null>(readPlacementLevel);
   const [completed, setCompleted] = useState<string[]>(readCompleted);
+  const [completionNotice, setCompletionNotice] = useState("");
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
   const [blankAnswers, setBlankAnswers] = useState<Record<number, string>>({});
   const [blankChecked, setBlankChecked] = useState<Record<number, boolean>>({});
@@ -489,12 +490,39 @@ export default function StudentLearningRoadmap({ mode, initialLevel, apiBase, au
     onLevelDetermined(level);
   }
 
-  function completeLesson() {
+  async function completeLesson() {
     if (!activeLesson) return;
-    const next = completed.includes(activeLesson.id) ? completed : [...completed, activeLesson.id];
+    const lesson = activeLesson;
+    const next = completed.includes(lesson.id) ? completed : [...completed, lesson.id];
     setCompleted(next);
     localStorage.setItem("linguapro-roadmap-completed", JSON.stringify(next));
     void persistLearningState({ completedLessonIds: next });
+
+    if (authenticated && apiBase) {
+      const headers = new Headers({ "Content-Type": "application/json" });
+      if (authToken) headers.set("Authorization", "Bearer " + authToken);
+      try {
+        const response = await fetch(apiBase + "/progress/lesson-complete", {
+          method: "POST",
+          credentials: "include",
+          headers,
+          body: JSON.stringify({ lessonId: lesson.id, lessonTitle: lesson.title }),
+        });
+        const payload = await response.json() as { message?: string; data?: { xpEarned?: number; totalXp?: number; alreadyCompleted?: boolean } };
+        if (!response.ok) {
+          setCompletionNotice("Lesson completed on this device, but XP could not be saved to your account. Please retry when your connection is available.");
+        } else if (payload.data?.alreadyCompleted) {
+          setCompletionNotice("Lesson progress saved. XP for this lesson was already awarded.");
+        } else {
+          setCompletionNotice("Lesson completed! +" + (payload.data?.xpEarned ?? 20) + " XP earned. Total XP: " + (payload.data?.totalXp ?? "updated") + ".");
+        }
+      } catch {
+        setCompletionNotice("Lesson completed on this device, but XP could not be saved because the server could not be reached.");
+      }
+    } else {
+      setCompletionNotice("Lesson completed on this device. Sign in to save your progress and earn account XP.");
+    }
+
     setActiveLessonId(null);
     setBlankAnswers({});
     setBlankChecked({});
@@ -664,6 +692,7 @@ export default function StudentLearningRoadmap({ mode, initialLevel, apiBase, au
   const stageLessons = levelOrder.map((level) => ({ level, lessons: visibleLessons.filter((lesson) => lesson.level === level) })).filter((stage) => stage.lessons.length);
   return <div className="roadmap-page">
     <div className="roadmap-heading"><div><span className="roadmap-kicker">YOUR CANDY-STYLE LEARNING JOURNEY</span><h1>Every lesson unlocks your next step</h1><p>Your placement level: <strong>{currentLevel}</strong>. Finish a lesson and pass its test to move along the path.</p></div><div className="roadmap-heading-icon">🗺️</div></div>
+    {completionNotice && <div className="roadmap-callout" role="status"><Check size={20} /><div><strong>Lesson progress</strong><p>{completionNotice}</p></div><button className="button button-outline" onClick={() => setCompletionNotice("")}>Dismiss</button></div>}
     {!readPlacementLevel() && <div className="roadmap-callout"><CircleHelp size={20} /><div><strong>Not sure about your level yet?</strong><p>Take the placement test to start at the right stage.</p></div><button className="button button-primary" onClick={onOpenTest}>Take level test <ChevronRight size={16} /></button></div>}
     <div className="roadmap-summary-cards"><div><span>🌱</span><strong>{completed.filter((id) => id.startsWith("basic-")).length}/5</strong><small>Basic levels</small></div><div><span>🚀</span><strong>{completed.filter((id) => id.startsWith("intermediate-")).length}/5</strong><small>Intermediate levels</small></div><div><span>🏆</span><strong>{completed.filter((id) => id.startsWith("advanced-")).length}/5</strong><small>Advanced levels</small></div></div>
     {stageLessons.map((stage) => <section className="roadmap-stage" key={stage.level}><div className="roadmap-stage-heading"><span>{stageEmojis[stage.level]}</span><div><h2>{stage.level}</h2><p>{stageDescriptions[stage.level]}</p></div><span className="roadmap-stage-count">{stage.lessons.filter((lesson) => completed.includes(lesson.id)).length}/{stage.lessons.length} complete</span></div><div className="candy-path">{stage.lessons.map((lesson, index) => { const isComplete = completed.includes(lesson.id); const isUnlocked = unlocked.has(lesson.id); return <div className={"candy-node-wrap " + (index % 2 ? "node-offset" : "")} key={lesson.id}><div className="candy-node-connector" /><button type="button" className={"candy-node " + (isComplete ? "node-complete" : isUnlocked ? "node-unlocked" : "node-locked")} disabled={!isUnlocked} onClick={() => { setActiveLessonId(lesson.id); setBlankAnswers({}); setBlankChecked({}); setArrangeAnswers({}); setLessonQuizAnswers({}); setLessonQuizSubmitted(false); }}><span className="candy-node-icon">{isComplete ? "⭐" : isUnlocked ? lesson.emoji : <LockKeyhole size={18} />}</span><span className="candy-node-number">LEVEL {index + 1}</span><strong>{lesson.title}</strong><small>{isComplete ? "Completed" : isUnlocked ? "Tap to learn" : "Complete the previous level"}</small></button></div>; })}</div></section>)}
