@@ -889,3 +889,19 @@ input, select { width: 100%; min-height: 42px; padding: 10px 11px; border: 1px s
 
 .profile-learning-path { display:flex;align-items:center;justify-content:space-between;gap:15px;margin:23px 0 16px;padding:17px;border:1px solid #e9e2fa;border-radius:14px;background:linear-gradient(120deg,#faf7ff,#fff); }.profile-learning-path h3 { margin:0 0 6px;font-size:13px; }.profile-learning-path p { margin:0;color:#655a7c;font-size:11px;font-weight:750; }.profile-learning-path small { display:block;margin-top:5px;color:#9188a1;font-size:10px; }.profile-learning-path .button { flex-shrink:0;display:inline-flex;align-items:center;gap:5px; }
 @media(max-width:520px) { .profile-learning-path { align-items:flex-start;flex-direction:column; }.profile-learning-path .button { width:100%;justify-content:center; } }
+
+
+/* Daily mission completion feedback */
+.daily-mission-progress{margin:-4px 0 18px;padding:18px 20px;border:1px solid #e7defb;border-radius:18px;background:linear-gradient(120deg,#faf7ff 0%,#fff 75%)}
+.daily-mission-progress-top{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.daily-mission-eyebrow{display:block;margin-bottom:5px;color:#7c3aed;font-size:10px;font-weight:850;letter-spacing:1.4px}
+.daily-mission-progress h3{margin:0 0 5px;color:#2e2147;font-size:16px}
+.daily-mission-progress p{margin:0;color:#716781;font-size:12px}
+.daily-mission-progress-top strong{flex-shrink:0;color:#6d28d9;font-size:24px;font-weight:850}
+.daily-mission-track{height:9px;margin:15px 0 10px;overflow:hidden;border-radius:99px;background:#eae4f5}
+.daily-mission-track span{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#8b5cf6,#5b5bd6);transition:width .25s ease}
+.daily-mission-progress .daily-mission-footnote{font-size:11px;font-weight:650}
+.task-card.task-completed{border-color:#c4b5fd;background:linear-gradient(145deg,#faf7ff,#fff);box-shadow:0 5px 18px rgba(109,40,217,.07)}
+.task-card .task-action.is-done{color:#5b21b6;background:#ede9fe;border-color:#ddd6fe}
+@media(max-width:520px){.daily-mission-progress{padding:15px;border-radius:15px}.daily-mission-progress h3{font-size:14px}.daily-mission-progress-top strong{font-size:21px}}
+@media(prefers-reduced-motion:reduce){.daily-mission-track span{transition:none}}
