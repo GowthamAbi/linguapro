@@ -69,3 +69,236 @@
 .lesson-visual-frame strong { font-size:11px;line-height:1.3; }.lesson-visual-frame small { color:#80768f;font-size:10px;line-height:1.45;overflow-wrap:anywhere; }
 @media(max-width:760px) { .lesson-visual-strip { grid-template-columns:repeat(3,minmax(0,1fr));gap:7px; }.lesson-visual-frame { min-height:125px;padding:9px; }.lesson-frame-icon { width:36px;height:36px;font-size:21px; } }
 @media(max-width:390px) { .lesson-visual-strip { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+
+/* Priority 3: mobile-first readability, touch targets and keyboard focus */
+.roadmap-page,
+.roadmap-page button {
+  -webkit-tap-highlight-color: transparent;
+}
+.roadmap-page {
+  width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-family: Manrope, "Noto Sans Tamil", "Latha", system-ui, sans-serif;
+}
+.roadmap-page button {
+  touch-action: manipulation;
+}
+.roadmap-page button:focus-visible {
+  outline: 3px solid #8b6be8;
+  outline-offset: 3px;
+}
+.lesson-speaking-actions .button,
+.lesson-test-actions .button {
+  min-height: 44px;
+}
+.lesson-example-list button,
+.exercise-option,
+.arrange-word,
+.arrange-answer button,
+.exercise-check {
+  min-height: 40px;
+}
+.roadmap-progress-track {
+  min-height: 8px;
+}
+.lesson-transcript,
+.lesson-feedback {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+@media (max-width: 760px) {
+  .roadmap-page {
+    padding-left: 12px;
+    padding-right: 12px;
+    padding-bottom: max(28px, env(safe-area-inset-bottom));
+  }
+  .roadmap-heading {
+    gap: 12px;
+    margin: 8px 0 18px;
+  }
+  .roadmap-heading h1 {
+    font-size: clamp(25px, 6.5vw, 31px);
+    line-height: 1.2;
+    letter-spacing: -.6px;
+    overflow-wrap: anywhere;
+  }
+  .roadmap-heading p,
+  .roadmap-callout p,
+  .roadmap-stage-heading p,
+  .roadmap-next-step p,
+  .lesson-visual-copy p,
+  .lesson-explanation > p {
+    font-size: 14px;
+    line-height: 1.75;
+  }
+  .roadmap-kicker {
+    font-size: 10px;
+    letter-spacing: .8px;
+    line-height: 1.5;
+  }
+  .roadmap-panel {
+    padding: clamp(14px, 4vw, 19px);
+    margin: 13px 0;
+    border-radius: 16px;
+  }
+  .placement-question-body h3,
+  .lesson-exercise > strong,
+  .lesson-quiz-question > strong {
+    font-size: 15px;
+    line-height: 1.6;
+  }
+  .placement-option {
+    min-height: 46px;
+    padding: 12px;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  .roadmap-submit,
+  .roadmap-next-step > .button,
+  .roadmap-callout .button,
+  .lesson-test-actions .button {
+    width: 100%;
+    justify-content: center;
+    min-height: 48px;
+  }
+  .roadmap-summary-cards small,
+  .candy-node small,
+  .lesson-frame-number,
+  .lesson-visual-frame small,
+  .arrange-card small {
+    font-size: 11px;
+    line-height: 1.5;
+  }
+  .roadmap-summary-cards strong {
+    font-size: 18px;
+  }
+  .candy-node {
+    min-height: 142px;
+    padding: 11px 7px;
+  }
+  .candy-node strong {
+    font-size: 12px;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+  }
+  .candy-node-number {
+    font-size: 10px;
+  }
+  .lesson-visual-copy {
+    padding: 17px;
+  }
+  .lesson-visual-copy h2,
+  .lesson-explanation h2,
+  .roadmap-panel > h2 {
+    font-size: 21px;
+    line-height: 1.3;
+  }
+  .lesson-example-list > div {
+    align-items: flex-start;
+    gap: 9px;
+    padding: 12px 10px;
+  }
+  .lesson-example-list p {
+    min-width: 0;
+    font-size: 14px;
+    line-height: 1.65;
+    overflow-wrap: anywhere;
+  }
+  .lesson-example-list button {
+    flex: 0 0 42px;
+    width: 42px;
+    height: 42px;
+  }
+  .lesson-exercise {
+    padding: 13px;
+  }
+  .exercise-options {
+    gap: 8px;
+  }
+  .exercise-option,
+  .arrange-word,
+  .arrange-answer button {
+    min-height: 44px;
+    padding: 10px 12px;
+    font-size: 14px;
+    line-height: 1.4;
+  }
+  .exercise-check {
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+  .lesson-speaking-target {
+    padding: 17px 13px;
+    font-size: clamp(17px, 4.5vw, 20px);
+    line-height: 1.65;
+    overflow-wrap: anywhere;
+  }
+  .lesson-speaking-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 9px;
+  }
+  .lesson-speaking-actions .button {
+    min-width: 0;
+    justify-content: center;
+    padding: 11px 8px;
+    font-size: 13px;
+    white-space: normal;
+  }
+  .lesson-transcript,
+  .lesson-feedback {
+    font-size: 14px !important;
+    line-height: 1.7;
+  }
+  .lesson-quiz-question .placement-options {
+    gap: 8px;
+  }
+  .lesson-result-note {
+    font-size: 14px;
+    line-height: 1.6;
+  }
+}
+@media (max-width: 420px) {
+  .roadmap-page {
+    padding-left: 9px;
+    padding-right: 9px;
+  }
+  .roadmap-heading-icon {
+    width: 48px;
+    height: 48px;
+    flex-basis: 48px;
+    border-radius: 15px;
+    font-size: 25px;
+  }
+  .roadmap-stage {
+    padding: 11px;
+  }
+  .candy-path {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 8px;
+  }
+  .candy-node {
+    min-height: 136px;
+  }
+  .lesson-visual-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .lesson-speaking-actions {
+    grid-template-columns: 1fr;
+  }
+  .placement-result-levels {
+    grid-template-columns: 1fr;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .roadmap-page *,
+  .roadmap-page *::before,
+  .roadmap-page *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
+}
+
