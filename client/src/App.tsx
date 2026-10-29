@@ -11,6 +11,8 @@ import type { FormEvent, ReactNode } from "react";
 import type { LearningLevel, LearningPhrase, LearningTask, Page, UserProfile } from "./types";
 import TeacherCourseBuilder from "./components/TeacherCourseBuilder";
 import TeacherCourseProgress from "./components/TeacherCourseProgress";
+import LiveAISpeakingCoach from "./components/LiveAISpeakingCoach";
+import "./components/live-speaking.css";
 
 const phrases: LearningPhrase[] = [
   { phrase: "Could you please help me?", meaning: "Ask someone for help politely.", example: "Could you please help me with this report?" },
@@ -806,6 +808,7 @@ function App() {
               {sessionComplete && <div className="inline-message"><strong>Practice complete!</strong> You finished all {phrases.length} phrases. {authenticated?"Your speaking task XP is being saved to your account.":"Sign in to save XP to your account."}<div className="practice-controls"><button className="button button-primary" onClick={()=>{setPhraseIndex(0);setSessionComplete(false);setSpokenTranscript("");setCoachCorrect(null);setCoachAttempts(0);setMessage("New practice started. Listen to the first phrase.");}}>Practise again</button></div></div>}
               <div className="coach-footer-stats"><span><strong>{coachAttempts}</strong> speaking attempts</span><span><strong>{phraseIndex}</strong> phrases cleared</span><span><strong>{Math.max(0,phrases.length-phraseIndex)}</strong> to go</span><span><strong>{Math.floor(speakingSecondsToday/60)}m {speakingSecondsToday%60}s</strong> spoken today</span></div>
             </section><aside className="coach-side-panel"><div className="coach-side-icon"><GraduationCap size={23}/></div><h3>Your speaking goals</h3><p>Small, repeatable steps help you speak more naturally over time.</p><div className="coach-goal-row"><span className="coach-goal-check"><Check size={14}/></span><div><strong>Listen carefully</strong><small>Notice sentence rhythm</small></div></div><div className="coach-goal-row"><span className="coach-goal-check"><Check size={14}/></span><div><strong>Speak out loud</strong><small>Practise the whole sentence</small></div></div><div className="coach-goal-row"><span className="coach-goal-check"><Check size={14}/></span><div><strong>Learn from feedback</strong><small>Try again when needed</small></div></div><div className="coach-side-tip"><Sparkles size={16}/><span>Tip: Speak at a comfortable pace. Clear words matter more than speed.</span></div></aside></div>
+            <LiveAISpeakingCoach apiBase={apiBase} authToken={authToken} authenticated={authenticated} level={profile.level} />
           </>}
 
 {page === "vocabulary" && <>
