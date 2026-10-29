@@ -1,0 +1,27 @@
+
+.live-speaking-card { margin-top:22px; padding:22px; }
+.live-speaking-card .card-heading { align-items:flex-start; }
+.live-speaking-card .tag { gap:5px; }
+.live-status { padding:7px 10px; border-radius:999px; background:#f2eff8; color:#756d84; font-size:11px; font-weight:800; white-space:nowrap; }
+.live-status.is-live { background:#e3fbf0; color:#14785e; }
+.live-controls { display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin:18px 0; }
+.live-compose { display:flex; align-items:flex-end; gap:12px; margin:15px 0; }
+.live-compose label { display:grid; gap:7px; flex:1; font-size:12px; font-weight:700; }
+.live-compose textarea { width:100%; resize:vertical; border:1px solid var(--line); border-radius:10px; padding:11px; color:var(--ink); }
+.live-turn-list,.live-report { margin-top:24px; padding-top:20px; border-top:1px solid var(--line); }
+.live-turn { padding:16px; margin-top:12px; border:1px solid var(--line); border-radius:13px; background:#fff; }
+.live-original { margin:8px 0 14px !important; color:#756d84; }
+.live-corrected { margin:8px 0 !important; color:#14785e; font-size:16px !important; font-weight:800; }
+.live-coach-reply { display:flex; align-items:flex-start; gap:9px; padding:12px; margin-top:12px; border-radius:10px; background:#f7f4ff; color:var(--purple); font-size:13px; }
+.live-coach-reply span { flex:1; }
+.live-coach-reply button { flex-shrink:0; }
+.report-toggle { display:flex; padding:3px; border-radius:10px; background:#f3f0f8; }
+.report-toggle button { border:0; border-radius:8px; padding:7px 10px; background:transparent; color:#756d84; font-size:11px; font-weight:800; }
+.report-toggle button.active { background:white; color:var(--purple); box-shadow:0 1px 4px #30205b14; }
+.live-stats { margin:15px 0; }
+.live-stats .stat-card { align-items:flex-start; }
+.live-stats .stat-card strong { font-size:22px; }
+.live-daily-list { display:grid; gap:8px; margin-top:12px; }
+.live-daily-list>div { display:flex; justify-content:space-between; gap:12px; padding:10px 12px; border-radius:9px; background:#faf9fd; font-size:12px; }
+.live-daily-list>div span:last-child { color:var(--muted); text-align:right; }
+@media(max-width:620px){.live-speaking-card{padding:15px}.live-compose{align-items:stretch;flex-direction:column}.live-compose .button{width:100%}.live-daily-list>div{flex-direction:column;gap:4px}.live-daily-list>div span:last-child{text-align:left}}
