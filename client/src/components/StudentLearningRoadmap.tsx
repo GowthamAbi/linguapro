@@ -555,7 +555,7 @@ export default function StudentLearningRoadmap({ mode, initialLevel, apiBase, au
 
     recognition.onresult = (event) => {
       const transcript = event.results[0]?.[0]?.transcript ?? "";
-      const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9' ]/g, " ").replace(/\\s+/g, " ").trim();
+      const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9' ]/g, " ").replace(/\s+/g, " ").trim();
       const expected = normalize(target);
       const heard = normalize(transcript);
       const expectedWords = expected.split(" ").filter(Boolean);
